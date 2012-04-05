@@ -1,0 +1,175 @@
+#!/bin/bash
+ver=0.1
+tempdir=$(mktemp -d)
+configrc=$HOME/.config/ccr-toolsrc
+ccrbaseurl="http://chakra-linux.org/ccr/"
+ccrurl="${ccrbaseurl}packages.php"
+idurl="${ccrbaseurl}rpc.php?type=info&arg="
+checkurl="${ccrbaseurl}packages.php?ID="
+# Defining some functions needed by main program
+
+die() {
+	if [ -d "$tempdir" ]; then
+		rm -rf "$tempdir"
+	fi
+	exit $1
+}
+
+version() {
+   echo "ccr-vote - version $ver"
+   echo
+   echo " http://cruznick.github.com/"
+   die 0
+}
+
+
+# TODO
+use() {
+   echo "ccr-vote - version $ver"
+   echo
+   echo "usage: ccr-vote <option> <pkgname1> <pkgname2> ..."
+   echo
+   echo "ccr-vote --version, -V       shows version"
+   echo "ccr-vote --help,    -h       shows this help"
+   echo "ccr-vote --vote,    -v       vote for packages"
+   echo "ccr-vote --unvote,  -u       unvote packages"
+   echo "ccr-vote --check,   -c       check for voted packages"
+   echo
+   echo " example:  ccr-vote --vote shake bfilter"
+   echo
+   echo "Fork of aurvote <http://archlinux.fr/>"
+   echo "written by cruznick <cruznick at archlinux dot us>"
+   echo " http://cruznick.github.com"
+}
+
+
+urlencode(){
+echo $@ | LANG=C awk '
+    BEGIN {
+        split ("1 2 3 4 5 6 7 8 9 A B C D E F", hextab, " ")
+        hextab [0] = 0
+        for ( i=1; i<=255; ++i ) ord [ sprintf ("%c", i) "" ] = i + 0
+    }
+    {
+        encoded = ""
+        for ( i=1; i<=length ($0); ++i ) {
+            c = substr ($0, i, 1)
+            if ( c ~ /[a-zA-Z0-9.-]/ ) {
+                encoded = encoded c             # safe character
+            } else if ( c == " " ) {
+                encoded = encoded "+"   # special handling
+            } else {
+                # unsafe character, encode it as a two-digit hex-number
+                lo = ord [c] % 16
+                hi = int (ord [c] / 16);
+                encoded = encoded "%" hextab [hi] hextab [lo]
+            }
+        }
+            print encoded
+    }
+    END {
+    }
+'
+}
+### MAIN PROGRAM ###
+action="vote"
+while [ "$#" -ne "0" ]; do
+	case $1 in
+		--help|-h)
+			use
+			die 0
+			;;
+		--version|-V) version;;
+		--check|-c) action="check";;
+		--vote|-v) action="vote";;
+		--unvote|-u) action="unvote";;
+		--*|-*)
+			use
+			die 0
+			;;
+		*)
+			pkgnames[${#pkgnames[@]}]=$1
+			;;
+	esac
+	shift
+done
+		
+if [ ${#pkgnames[@]} -eq 0 ]; then
+	use
+	die 0
+fi
+
+# Check config file
+if [ -r ~/.ccr-toolsrc ] && [ ! -r "$configrc" ]; then
+	echo "Moving ~/.ccr-toolsrc to $configrc"
+	mv ~/.ccr-toolsrc $configrc
+elif [ ! -r $configrc ]; then
+   echo "You have to create ~/.config/ccr-toolsrc with inside:"
+   echo "user=YOUR_CCR_USERNAME"
+   echo "pass=YOUR_CCR_PASS"
+   echo
+   echo "To create a new account just go to:"
+   echo "http://chakra-linux.org/ccr/account.php"
+   die 1
+fi
+  
+  
+source $configrc || die 1
+
+#logins to ccr and keeps sesion alive
+umask 077
+curl -Ss --cookie-jar "$tempdir/cjar" --output /dev/null ${ccrbaseurl} 
+curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar"  \
+--data "user=$user" --data "passwd=$(urlencode $pass)" \
+--location --output "$tempdir/ccrvote.login"  \
+  ${ccrbaseurl}
+if grep --quiet "'error'>Bad username or password" "$tempdir/ccrvote.login";then
+	echo "incorrect password: check $configrc file"
+	die 1
+fi
+
+
+
+
+
+
+die 0
+# just for reference
+# vote/unvote/check for each package
+for pkgname in ${pkgnames[@]}; do
+		ccrid=$(wget --quiet "${idurl}${pkgname}" -O - | \
+		sed 's/.*"ID":"\([^"]*\)".*/\1/;q')
+		if [ -z "$ccrid" ]; then
+			echo "$pkgname was not found on CCR"
+			continue
+		fi
+	if [ "$action" = "check" ]; then
+		echo -n "$pkgname:  "
+		curl -Ss --cookie "$tempdir/cjar"  --cookie-jar "$tempdir/cjar"  --output "$tempdir/$pkgname" "${checkurl}${ccrid}"
+		if grep -q "type='submit' class='button' name='do_UnVote'" $tempdir/$pkgname; then
+			echo "already voted"
+		elif grep -q "type='submit' class='button' name='do_Vote'" $tempdir/$pkgname; then
+			echo "not voted"
+		else
+			echo "voted status not found"
+		fi
+	elif [ "$action" = "vote" ]; then
+		if curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" --data "IDs[${ccrid}]=1" \
+		    --data "ID=${ccrid}" --data "do_Vote=1" \
+		    --output /dev/null http://chakra-linux.org/ccr/packages.php; then
+			echo "$pkgname now voted"
+		else
+			echo "ERROR: Can't access $ccrurl"
+		fi
+	elif [ "$action" = "unvote" ]; then
+		 if curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" --data "IDs[${ccrid}]=1" \
+		    --data "ID=${ccrid}" --data "do_UnVote=1" \
+		    --output /dev/null http://chakra-linux.org/ccr/packages.php; then
+			echo "$pkgname now unvoted"
+		else
+			echo "ERROR: Can't access $ccrurl"
+		fi
+	fi
+done
+
+die 0
