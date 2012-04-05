@@ -2,9 +2,10 @@
 ver=0.1
 tempdir=$(mktemp -d)
 configrc=$HOME/.config/ccr-toolsrc
-ccrurl="http://chakra-linux.org/ccr/packages.php"
-idurl="http://chakra-linux.org/ccr/rpc.php?type=info&arg="
-checkurl="http://chakra-linux.org/ccr/packages.php?ID="
+ccrbaseurl="http://chakra-linux.org/ccr/"
+ccrurl="${ccrbaseurl}packages.php"
+idurl="${ccrbaseurl}rpc.php?type=info&arg="
+checkurl="${ccrbaseurl}packages.php?ID="
 # Defining some functions needed by main program
 
 die() {
@@ -75,7 +76,7 @@ action="vote"
 while [ "$#" -ne "0" ]; do
 	case $1 in
 		--help|-h)
-			usage
+			use
 			die 0
 			;;
 		--version|-V) version;;
@@ -83,7 +84,7 @@ while [ "$#" -ne "0" ]; do
 		--vote|-v) action="vote";;
 		--unvote|-u) action="unvote";;
 		--*|-*)
-			usage
+			use
 			die 0
 			;;
 		*)
@@ -117,11 +118,11 @@ source $configrc || die 1
 
 #logins to ccr and keeps sesion alive
 umask 077
-curl -Ss --cookie-jar "$tempdir/cjar" --output /dev/null http://chakra-linux.org/ccr/ 
+curl -Ss --cookie-jar "$tempdir/cjar" --output /dev/null ${ccrbaseurl} 
 curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar"  \
 --data "user=$user" --data "passwd=$(urlencode $pass)" \
 --location --output "$tempdir/ccrvote.login"  \
-  http://chakra-project.org/ccr/
+  ${ccrbaseurl}
 if grep --quiet "'error'>Bad username or password" "$tempdir/ccrvote.login";then
 	echo "incorrect password: check $configrc file"
 	die 1
