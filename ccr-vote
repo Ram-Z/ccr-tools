@@ -9,17 +9,17 @@ checkurl="${ccrbaseurl}packages.php?ID="
 # Defining some functions needed by main program
 
 die() {
-	if [ -d "$tempdir" ]; then
-		rm -rf "$tempdir"
-	fi
-	exit $1
+    if [ -d "$tempdir" ]; then
+        rm -rf "$tempdir"
+    fi
+    exit $1
 }
 
 version() {
-   echo "ccr-vote - version $ver"
-   echo
-   echo " http://cruznick.github.com/"
-   die 0
+    echo "ccr-vote - version $ver"
+    echo
+    echo " http://cruznick.github.com/"
+    die 0
 }
 
 
@@ -130,12 +130,12 @@ fi
 
 # vote/unvote/check for each package
 for pkgname in ${pkgnames[@]}; do
-		ccrid=$(wget --quiet "${idurl}${pkgname}" -O - | \
-		sed 's/.*"ID":"\([^"]*\)".*/\1/;q')
-		if [ -z "$ccrid" ]; then
-			echo "$pkgname was not found on CCR"
-			continue
-		fi
+    ccrid=$(wget --quiet "${idurl}${pkgname}" -O - | \
+    sed 's/.*"ID":"\([^"]*\)".*/\1/;q')
+    if [ -z "$ccrid" ]; then
+        echo "$pkgname was not found on CCR"
+        continue
+    fi
 	if [ "$action" = "check" ]; then
 		echo -n "$pkgname:  "
 		curl -Ss --cookie "$tempdir/cjar"  --cookie-jar "$tempdir/cjar"  --output "$tempdir/$pkgname" "${checkurl}${ccrid}"
@@ -166,3 +166,5 @@ for pkgname in ${pkgnames[@]}; do
 done
 
 die 0
+
+# vim: sts=4 ts=4 sw=4 et
