@@ -163,7 +163,7 @@ if grep --quiet "'error'>Bad username or password" "$tempdir/ccrvote.login"; the
 fi
 
 # submit file
-echo -n "`basename ${pkgsrc}` : "
+echo "`basename ${pkgsrc}`"
 curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" \
     --form "pkgsubmit=1" \
     --form "pfile=@${pkgsrc}" \
