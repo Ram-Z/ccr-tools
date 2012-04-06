@@ -145,6 +145,23 @@ vote() {
 }
 
 submit() {
+    # we don't even want to submit something different than source files
+    if [[ ! -f $pkgsrc || $pkgsrc != *.src.tar.gz ]]; then
+       echo "`basename ${pkgsrc}` is not a source package!"
+       die 1
+    fi
+
+    # check for category
+    if [[ $category == "" ]]; then
+        echo "You must provide a category."
+        die 1
+    fi
+
+    getcat $category
+    
+    getcred
+    login
+
     echo "`basename ${pkgsrc}`"
     curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" \
         --form "pkgsubmit=1" \
