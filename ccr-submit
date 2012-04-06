@@ -168,7 +168,7 @@ curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" \
     --form "pkgsubmit=1" \
     --form "pfile=@${pkgsrc}" \
     --form "category=${catvalue}" \
-    --output /dev/null
+    --output /dev/null \
     "${submiturl}"
 
 die 0
