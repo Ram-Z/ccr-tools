@@ -7,10 +7,37 @@ ccrbaseurl="http://localhost/"
 submiturl="${ccrbaseurl}ccr-test.php"
 #ccrbaseurl="http://chakra-linux.org/ccr/"
 #submiturl="${ccrbaseurl}pkgsubmit.php"
-ccrurl="${ccrbaseurl}packages.php"
-idurl="${ccrbaseurl}rpc.php?type=info&arg="
-checkurl="${ccrbaseurl}packages.php?ID="
+
 # Defining some functions needed by main program
+get_cat() {
+    declare -A categories
+    categories=(
+        ["daemons"]="2"
+        ["devel"]="3"
+        ["editors"]="4"
+        ["educational"]="15"
+        ["emulators"]="5"
+        ["games"]="6"
+        ["gnome"]="7"
+        ["i18n"]="8"
+        ["kde"]="9"
+        ["lib"]="10"
+        ["lib32"]="19"
+        ["modules"]="11"
+        ["multimedia"]="12"
+        ["network"]="13"
+        ["office"]="14"
+        ["system"]="16"
+        ["utils"]="18"
+        ["x11"]="17"
+    )
+
+    catvalue=${categories[$1]}
+    if [[ "${catvalue}" == "" ]]; then
+        echo "'$1' is not a valid category."
+        die 1
+    fi
+}
 
 die() {
 	if [ -d "$tempdir" ]; then
@@ -22,30 +49,25 @@ die() {
 }
 
 version() {
-   echo "ccr-vote - version $ver"
+   echo "ccr-submit - version $ver"
    echo
-   echo " http://cruznick.github.com/"
+   echo " https://github.com/Ram-Z/ccr-tools"
    die 0
 }
 
-
-# TODO
 use() {
-   echo "ccr-vote - version $ver"
+   echo "ccr-submit - version $ver"
    echo
-   echo "usage: ccr-vote <option> <pkgname1> <pkgname2> ..."
+   echo "usage: ccr-submit -c <category> <pkgsrc>"
    echo
-   echo "ccr-vote --version, -V       shows version"
-   echo "ccr-vote --help,    -h       shows this help"
-   echo "ccr-vote --vote,    -v       vote for packages"
-   echo "ccr-vote --unvote,  -u       unvote packages"
-   echo "ccr-vote --check,   -c       check for voted packages"
+   echo "ccr-submit --version, -V       shows version"
+   echo "ccr-submit --help,    -h       shows this help"
    echo
-   echo " example:  ccr-vote --vote shake bfilter"
+   echo " example:  ccr-submit -c devel ccr-submit-$ver.src.tar.gz"
    echo
-   echo "Fork of aurvote <http://archlinux.fr/>"
-   echo "written by cruznick <cruznick at archlinux dot us>"
-   echo " http://cruznick.github.com"
+   echo "Fork of ccr-vote"
+   echo "written by Ram-Z <samir.benmendil[at]gmail[dot]com>"
+   echo " https://github.com/Ram-Z/ccr-tools"
 }
 
 
@@ -77,8 +99,8 @@ echo $@ | LANG=C awk '
     }
 '
 }
+
 ### MAIN PROGRAM ###
-action="vote"
 while [ "$#" -ne "0" ]; do
 	case $1 in
 		--help|-h)
@@ -86,29 +108,40 @@ while [ "$#" -ne "0" ]; do
 			die 0
 			;;
 		--version|-V) version;;
-		--check|-c) action="check";;
-		--vote|-v) action="vote";;
-		--unvote|-u) action="unvote";;
+		--category|-c) shift; category=$1;;
 		--*|-*)
 			use
 			die 0
 			;;
 		*)
-			pkgsrcs[${#pkgsrcs[@]}]=$1
+			pkgsrc=$1
 			;;
 	esac
 	shift
 done
 
-if [ ${#pkgsrcs[@]} -eq 0 ]; then
+if [[ $pkgsrc == "" ]]; then
 	use
 	die 0
 fi
 
 # we don't even want to submit something different than source files
-for pkgsrc in ${pkgsrcs[@]}; do
-    [[ -f $pkgsrc && $pkgsrc == *.src.tar.gz ]] || echo "`basename ${pkgsrc}` is not a source package!"
-done
+if [[ ! -f $pkgsrc || $pkgsrc != *.src.tar.gz ]]; then
+   echo "`basename ${pkgsrc}` is not a source package!"
+   die 1
+fi
+
+# check for category
+if [[ $category == "" ]]; then
+    echo "You must provide a category."
+    die 1
+fi
+
+echo $category
+get_cat $category
+echo $catvalue
+echo $pkgsrc
+die 2
 
 # Check config file
 if [ -r ~/.ccr-toolsrc ] && [ ! -r "$configrc" ]; then
@@ -138,13 +171,12 @@ if grep --quiet "'error'>Bad username or password" "$tempdir/ccrvote.login";then
 	die 1
 fi
 
-for pkgsrc in ${pkgsrc[@]}; do
-    echo -n "`basename ${pkgsrc}` : "
-    curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" \
-        --form "pkgsubmit=1" \
-        --form "pfile=@${pkgsrc}" \
-        "http://localhost/ccr-test.php"
-done
+# submit file
+echo -n "`basename ${pkgsrc}` : "
+curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" \
+    --form "pkgsubmit=1" \
+    --form "pfile=@${pkgsrc}" \
+    "http://localhost/ccr-test.php"
 
 die 0
 # just for reference
