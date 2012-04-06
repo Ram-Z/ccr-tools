@@ -2,7 +2,11 @@
 ver=0.1
 tempdir=$(mktemp -d)
 configrc=$HOME/.config/ccr-toolsrc
-ccrbaseurl="http://chakra-linux.org/ccr/"
+#FIXME there's no point in sending pkgs to localhost
+ccrbaseurl="http://localhost/"
+submiturl="${ccrbaseurl}ccr-test.php"
+#ccrbaseurl="http://chakra-linux.org/ccr/"
+#submiturl="${ccrbaseurl}pkgsubmit.php"
 ccrurl="${ccrbaseurl}packages.php"
 idurl="${ccrbaseurl}rpc.php?type=info&arg="
 checkurl="${ccrbaseurl}packages.php?ID="
@@ -12,6 +16,8 @@ die() {
 	if [ -d "$tempdir" ]; then
 		rm -rf "$tempdir"
 	fi
+    # TODO remove this echo
+    echo $1
 	exit $1
 }
 
@@ -88,16 +94,21 @@ while [ "$#" -ne "0" ]; do
 			die 0
 			;;
 		*)
-			pkgnames[${#pkgnames[@]}]=$1
+			pkgsrcs[${#pkgsrcs[@]}]=$1
 			;;
 	esac
 	shift
 done
-		
-if [ ${#pkgnames[@]} -eq 0 ]; then
+
+if [ ${#pkgsrcs[@]} -eq 0 ]; then
 	use
 	die 0
 fi
+
+# we don't even want to submit something different than source files
+for pkgsrc in ${pkgsrcs[@]}; do
+    [[ -f $pkgsrc && $pkgsrc == *.src.tar.gz ]] || echo "`basename ${pkgsrc}` is not a source package!"
+done
 
 # Check config file
 if [ -r ~/.ccr-toolsrc ] && [ ! -r "$configrc" ]; then
@@ -113,7 +124,6 @@ elif [ ! -r $configrc ]; then
    die 1
 fi
   
-  
 source $configrc || die 1
 
 #logins to ccr and keeps sesion alive
@@ -128,15 +138,18 @@ if grep --quiet "'error'>Bad username or password" "$tempdir/ccrvote.login";then
 	die 1
 fi
 
-
-
-
-
+for pkgsrc in ${pkgsrc[@]}; do
+    echo -n "`basename ${pkgsrc}` : "
+    curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" \
+        --form "pkgsubmit=1" \
+        --form "pfile=@${pkgsrc}" \
+        "http://localhost/ccr-test.php"
+done
 
 die 0
 # just for reference
 # vote/unvote/check for each package
-for pkgname in ${pkgnames[@]}; do
+for pkgname in ${pkgsrcs[@]}; do
 		ccrid=$(wget --quiet "${idurl}${pkgname}" -O - | \
 		sed 's/.*"ID":"\([^"]*\)".*/\1/;q')
 		if [ -z "$ccrid" ]; then
@@ -173,3 +186,5 @@ for pkgname in ${pkgnames[@]}; do
 done
 
 die 0
+
+# vim: sts=4 ts=4 sw=4 et
