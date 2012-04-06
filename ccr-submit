@@ -60,6 +60,13 @@ use() {
     echo
     echo " example:  ccr-submit -c devel ccr-submit-$ver.src.tar.gz"
     echo
+    echo "You can create ~/.config/ccr-toolsrc containing:"
+    echo "user=YOUR_CCR_USERNAME"
+    echo "pass=YOUR_CCR_PASS"
+    echo
+    echo "To create a new account just go to:"
+    echo "http://chakra-linux.org/ccr/account.php"
+    echo
     echo "Fork of ccr-vote"
     echo "written by Ram-Z <samir.benmendil[at]gmail[dot]com>"
     echo " https://github.com/Ram-Z/ccr-tools"
@@ -138,17 +145,12 @@ getcat $category
 if [ -r ~/.ccr-toolsrc ] && [ ! -r "$configrc" ]; then
     echo "Moving ~/.ccr-toolsrc to $configrc"
 	mv ~/.ccr-toolsrc $configrc
-elif [ ! -r $configrc ]; then
-    echo "You have to create ~/.config/ccr-toolsrc with inside:"
-    echo "user=YOUR_CCR_USERNAME"
-    echo "pass=YOUR_CCR_PASS"
-    echo
-    echo "To create a new account just go to:"
-    echo "http://chakra-linux.org/ccr/account.php"
-    die 1
 fi
-  
-source $configrc || die 1
+
+[ -r "$configrc" ] && source $configrc
+
+[[ -z $user ]] && read -p "please enter your CCR username: " user
+[[ -z $pass ]] && read -p "please enter your CCR password: " -s pass && echo
 
 #logins to ccr and keeps sesion alive
 umask 077

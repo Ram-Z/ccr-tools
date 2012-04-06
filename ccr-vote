@@ -25,21 +25,27 @@ version() {
 
 
 use() {
-   echo "ccr-vote - version $ver"
-   echo
-   echo "usage: ccr-vote <option> <pkgname1> <pkgname2> ..."
-   echo
-   echo "ccr-vote --version, -V       shows version"
-   echo "ccr-vote --help,    -h       shows this help"
-   echo "ccr-vote --vote,    -v       vote for packages"
-   echo "ccr-vote --unvote,  -u       unvote packages"
-   echo "ccr-vote --check,   -c       check for voted packages"
-   echo
-   echo " example:  ccr-vote --vote shake bfilter"
-   echo
-   echo "Fork of aurvote <http://archlinux.fr/>"
-   echo "written by cruznick <cruznick at archlinux dot us>"
-   echo " http://cruznick.github.com"
+    echo "ccr-vote - version $ver"
+    echo
+    echo "usage: ccr-vote <option> <pkgname1> <pkgname2> ..."
+    echo
+    echo "ccr-vote --version, -V       shows version"
+    echo "ccr-vote --help,    -h       shows this help"
+    echo "ccr-vote --vote,    -v       vote for packages"
+    echo "ccr-vote --unvote,  -u       unvote packages"
+    echo "ccr-vote --check,   -c       check for voted packages"
+    echo
+    echo " example:  ccr-vote --vote shake bfilter"
+    echo
+    echo "You can create ~/.config/ccr-toolsrc containing:"
+    echo "user=YOUR_CCR_USERNAME"
+    echo "pass=YOUR_CCR_PASS"
+    echo
+    echo "To create a new account just go to:"
+    echo "http://chakra-linux.org/ccr/account.php"
+    echo "Fork of aurvote <http://archlinux.fr/>"
+    echo "written by cruznick <cruznick at archlinux dot us>"
+    echo " http://cruznick.github.com"
 }
 
 
@@ -103,18 +109,12 @@ fi
 if [ -r ~/.ccr-toolsrc ] && [ ! -r "$configrc" ]; then
 	echo "Moving ~/.ccr-toolsrc to $configrc"
 	mv ~/.ccr-toolsrc $configrc
-elif [ ! -r $configrc ]; then
-   echo "You have to create ~/.config/ccr-toolsrc with inside:"
-   echo "user=YOUR_CCR_USERNAME"
-   echo "pass=YOUR_CCR_PASS"
-   echo
-   echo "To create a new account just go to:"
-   echo "http://chakra-linux.org/ccr/account.php"
-   die 1
 fi
   
-  
-source $configrc || die 1
+[ -r "$configrc" ] && source $configrc
+
+[[ -z $user ]] && read -p "please enter your CCR username: " user
+[[ -z $pass ]] && read -p "please enter your CCR password: " -s pass && echo
 
 #logins to ccr and keeps sesion alive
 umask 077
