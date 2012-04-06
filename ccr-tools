@@ -48,7 +48,6 @@ use() {
     echo " http://cruznick.github.com"
 }
 
-
 urlencode() {
     echo $@ | LANG=C awk '
         BEGIN {
