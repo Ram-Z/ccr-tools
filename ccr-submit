@@ -2,11 +2,8 @@
 ver=0.1
 tempdir=$(mktemp -d)
 configrc=$HOME/.config/ccr-toolsrc
-#FIXME there's no point in sending pkgs to localhost
-ccrbaseurl="http://localhost/"
-submiturl="${ccrbaseurl}ccr-test.php"
-#ccrbaseurl="http://chakra-linux.org/ccr/"
-#submiturl="${ccrbaseurl}pkgsubmit.php"
+ccrbaseurl="http://chakra-linux.org/ccr/"
+submiturl="${ccrbaseurl}pkgsubmit.php"
 
 # Defining some functions needed by main program
 getcat() {
