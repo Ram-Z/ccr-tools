@@ -9,7 +9,7 @@ submiturl="${ccrbaseurl}ccr-test.php"
 #submiturl="${ccrbaseurl}pkgsubmit.php"
 
 # Defining some functions needed by main program
-get_cat() {
+getcat() {
     declare -A categories
     categories=(
         ["daemons"]="2"
@@ -40,34 +40,32 @@ get_cat() {
 }
 
 die() {
-	if [ -d "$tempdir" ]; then
-		rm -rf "$tempdir"
-	fi
-    # TODO remove this echo
-    echo $1
-	exit $1
+    if [ -d "$tempdir" ]; then
+        rm -rf "$tempdir"
+    fi
+    exit $1
 }
 
 version() {
-   echo "ccr-submit - version $ver"
-   echo
-   echo " https://github.com/Ram-Z/ccr-tools"
-   die 0
+    echo "ccr-submit - version $ver"
+    echo
+    echo " https://github.com/Ram-Z/ccr-tools"
+    die 0
 }
 
 use() {
-   echo "ccr-submit - version $ver"
-   echo
-   echo "usage: ccr-submit -c <category> <pkgsrc>"
-   echo
-   echo "ccr-submit --version, -V       shows version"
-   echo "ccr-submit --help,    -h       shows this help"
-   echo
-   echo " example:  ccr-submit -c devel ccr-submit-$ver.src.tar.gz"
-   echo
-   echo "Fork of ccr-vote"
-   echo "written by Ram-Z <samir.benmendil[at]gmail[dot]com>"
-   echo " https://github.com/Ram-Z/ccr-tools"
+    echo "ccr-submit - version $ver"
+    echo
+    echo "usage: ccr-submit -c <category> <pkgsrc>"
+    echo
+    echo "ccr-submit --version, -V       shows version"
+    echo "ccr-submit --help,    -h       shows this help"
+    echo
+    echo " example:  ccr-submit -c devel ccr-submit-$ver.src.tar.gz"
+    echo
+    echo "Fork of ccr-vote"
+    echo "written by Ram-Z <samir.benmendil[at]gmail[dot]com>"
+    echo " https://github.com/Ram-Z/ccr-tools"
 }
 
 
@@ -137,24 +135,20 @@ if [[ $category == "" ]]; then
     die 1
 fi
 
-echo $category
-get_cat $category
-echo $catvalue
-echo $pkgsrc
-die 2
+getcat $category
 
 # Check config file
 if [ -r ~/.ccr-toolsrc ] && [ ! -r "$configrc" ]; then
-	echo "Moving ~/.ccr-toolsrc to $configrc"
+    echo "Moving ~/.ccr-toolsrc to $configrc"
 	mv ~/.ccr-toolsrc $configrc
 elif [ ! -r $configrc ]; then
-   echo "You have to create ~/.config/ccr-toolsrc with inside:"
-   echo "user=YOUR_CCR_USERNAME"
-   echo "pass=YOUR_CCR_PASS"
-   echo
-   echo "To create a new account just go to:"
-   echo "http://chakra-linux.org/ccr/account.php"
-   die 1
+    echo "You have to create ~/.config/ccr-toolsrc with inside:"
+    echo "user=YOUR_CCR_USERNAME"
+    echo "pass=YOUR_CCR_PASS"
+    echo
+    echo "To create a new account just go to:"
+    echo "http://chakra-linux.org/ccr/account.php"
+    die 1
 fi
   
 source $configrc || die 1
@@ -166,7 +160,7 @@ curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar"  \
 --data "user=$user" --data "passwd=$(urlencode $pass)" \
 --location --output "$tempdir/ccrvote.login"  \
   ${ccrbaseurl}
-if grep --quiet "'error'>Bad username or password" "$tempdir/ccrvote.login";then
+if grep --quiet "'error'>Bad username or password" "$tempdir/ccrvote.login"; then
 	echo "incorrect password: check $configrc file"
 	die 1
 fi
@@ -176,46 +170,8 @@ echo -n "`basename ${pkgsrc}` : "
 curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" \
     --form "pkgsubmit=1" \
     --form "pfile=@${pkgsrc}" \
-    "http://localhost/ccr-test.php"
-
-die 0
-# just for reference
-# vote/unvote/check for each package
-for pkgname in ${pkgsrcs[@]}; do
-		ccrid=$(wget --quiet "${idurl}${pkgname}" -O - | \
-		sed 's/.*"ID":"\([^"]*\)".*/\1/;q')
-		if [ -z "$ccrid" ]; then
-			echo "$pkgname was not found on CCR"
-			continue
-		fi
-	if [ "$action" = "check" ]; then
-		echo -n "$pkgname:  "
-		curl -Ss --cookie "$tempdir/cjar"  --cookie-jar "$tempdir/cjar"  --output "$tempdir/$pkgname" "${checkurl}${ccrid}"
-		if grep -q "type='submit' class='button' name='do_UnVote'" $tempdir/$pkgname; then
-			echo "already voted"
-		elif grep -q "type='submit' class='button' name='do_Vote'" $tempdir/$pkgname; then
-			echo "not voted"
-		else
-			echo "voted status not found"
-		fi
-	elif [ "$action" = "vote" ]; then
-		if curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" --data "IDs[${ccrid}]=1" \
-		    --data "ID=${ccrid}" --data "do_Vote=1" \
-		    --output /dev/null http://chakra-linux.org/ccr/packages.php; then
-			echo "$pkgname now voted"
-		else
-			echo "ERROR: Can't access $ccrurl"
-		fi
-	elif [ "$action" = "unvote" ]; then
-		 if curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" --data "IDs[${ccrid}]=1" \
-		    --data "ID=${ccrid}" --data "do_UnVote=1" \
-		    --output /dev/null http://chakra-linux.org/ccr/packages.php; then
-			echo "$pkgname now unvoted"
-		else
-			echo "ERROR: Can't access $ccrurl"
-		fi
-	fi
-done
+    --form "category=${catvalue}" \
+    "${submiturl}"
 
 die 0
 
