@@ -35,11 +35,14 @@ usage() {
     echo
     echo "usage: ccr-tools <option> <pkgname1> <pkgname2> ..."
     echo
-    echo "ccr-tools --version, -V       shows version"
-    echo "ccr-tools --help,    -h       shows this help"
-    echo "ccr-tools --vote,    -v       vote for packages"
-    echo "ccr-tools --unvote,  -u       unvote packages"
-    echo "ccr-tools --check,   -c       check for voted packages"
+    echo "ccr-tools --version,    -V    shows version"
+    echo "ccr-tools --help,       -h    shows this help"
+    echo "ccr-tools --vote,       -v    vote for packages"
+    echo "ccr-tools --unvote,     -u    unvote packages"
+    echo "ccr-tools --check,      -c    check for voted packages"
+    echo "ccr-tools --submit,     -s    submit a new package"
+    echo "ccr-tools --category,   -C    category for new packages"
+    echo "ccr-tools --maintainer, -m    list all packages by maintainer"
     echo
     echo " example:  ccr-tools --vote shake bfilter"
     echo
@@ -66,26 +69,50 @@ existsinccr() {
 
 getcat() {
     declare -A categories
-    categories=(
-        ["daemons"]="2"
-        ["devel"]="3"
-        ["editors"]="4"
-        ["educational"]="15"
-        ["emulators"]="5"
-        ["games"]="6"
-        ["gnome"]="7"
-        ["i18n"]="8"
-        ["kde"]="9"
-        ["lib"]="10"
-        ["lib32"]="19"
-        ["modules"]="11"
-        ["multimedia"]="12"
-        ["network"]="13"
-        ["office"]="14"
-        ["system"]="16"
-        ["utils"]="18"
-        ["x11"]="17"
-    )
+    if [[ "$1" =~ "^[0-9]+" ]]; then
+        categories=(
+            ["1"]="none"
+            ["2"]="daemons"
+            ["3"]="devel"
+            ["4"]="editors"
+            ["15"]="educational"
+            ["5"]="emulators"
+            ["6"]="games"
+            ["7"]="gnome"
+            ["8"]="i18n"
+            ["9"]="kde"
+            ["10"]="lib"
+            ["19"]="lib32"
+            ["11"]="modules"
+            ["12"]="multimedia"
+            ["13"]="network"
+            ["14"]="office"
+            ["16"]="system"
+            ["18"]="utils"
+            ["17"]="x11"
+        )
+    else
+        categories=(
+            ["daemons"]="2"
+            ["devel"]="3"
+            ["editors"]="4"
+            ["educational"]="15"
+            ["emulators"]="5"
+            ["games"]="6"
+            ["gnome"]="7"
+            ["i18n"]="8"
+            ["kde"]="9"
+            ["lib"]="10"
+            ["lib32"]="19"
+            ["modules"]="11"
+            ["multimedia"]="12"
+            ["network"]="13"
+            ["office"]="14"
+            ["system"]="16"
+            ["utils"]="18"
+            ["x11"]="17"
+        )
+    fi
 
     if [[ "${1}" = "" ]]; then
         catvalue="1"
@@ -135,13 +162,13 @@ getcred() {
     fi
       
     [ -r "$configrc" ] && source $configrc
-
-    while [[ -z $user ]]; do read -p "please enter your CCR username: " user; done
-    while [[ -z $pass ]]; do read -p "please enter your CCR password: " -s pass && echo; done
 }
 
 login() {
     getcred
+
+    while [[ -z $user ]]; do read -p "please enter your CCR username: " user; done
+    while [[ -z $pass ]]; do read -p "please enter your CCR password: " -s pass && echo; done
 
     # logins to ccr and keeps session alive
     umask 077
@@ -162,7 +189,18 @@ getccrid() {
 }
 
 maintainer() {
-    true
+    if [[ ! $maintainer ]]; then 
+        getcred
+        [[ $user ]] && maintainer=$user || err "You must specify a maintainer." 
+    fi
+
+    # this will break if the description contains '@'
+    curl -LfGs --data-urlencode "arg=$maintainer" "$rpcurl=msearch" | \
+        jshon -Q -e results -a -e Name -u -p -e Version -u -p -e CategoryID -u -p -e Description -u | \
+        sed 's/^$/-/' |  paste -s -d "@@@\n" | sed -e "s/\(.*@.*@\)\([0-9][0-9]*\)@/\1test@/g" | \
+        column -t -s '@' | cut -c1-$(tput cols)
+
+    exit
 }
 
 vote() {
@@ -245,7 +283,7 @@ pkgargs=()
 while [ "$#" -ne "0" ]; do
 	case $1 in
     --help|-h)     usage ;;
-    --version|-V)  action="version" ;;
+    --version|-V)  version ;;
     --check|-c)    action="check" ;;
     --vote|-v)     action="vote" ;;
     --unvote|-u)   action="unvote" ;;
@@ -260,10 +298,11 @@ done
 
 # sanity check
 [[ $action ]] || usage
-[[ -z $pkgargs ]] && err "Must specify a package."
+[[ $action != "maintainer" && -z $pkgargs ]] && err "Must specify a package."
 
 [[ $action = "vote" || $action = "check" || $action = "unvote" ]] && vote
 [[ $action = "submit" ]] && submit
+[[ $action = "maintainer" ]] && maintainer
 
 die 0
 
