@@ -35,11 +35,14 @@ usage() {
     echo
     echo "usage: ccr-tools <option> <pkgname1> <pkgname2> ..."
     echo
-    echo "ccr-tools --version, -V       shows version"
-    echo "ccr-tools --help,    -h       shows this help"
-    echo "ccr-tools --vote,    -v       vote for packages"
-    echo "ccr-tools --unvote,  -u       unvote packages"
-    echo "ccr-tools --check,   -c       check for voted packages"
+    echo "ccr-tools --version,    -V    shows version"
+    echo "ccr-tools --help,       -h    shows this help"
+    echo "ccr-tools --vote,       -v    vote for packages"
+    echo "ccr-tools --unvote,     -u    unvote packages"
+    echo "ccr-tools --check,      -c    check for voted packages"
+    echo "ccr-tools --submit,     -s    submit a new package"
+    echo "ccr-tools --category,   -C    category for new packages"
+    echo "ccr-tools --maintainer, -m    list all packages by maintainer"
     echo
     echo " example:  ccr-tools --vote shake bfilter"
     echo
