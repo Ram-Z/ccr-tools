@@ -165,7 +165,18 @@ getccrid() {
 }
 
 maintainer() {
-    true
+    getcred
+
+    [[ ! $maintainer && $user ]] && maintainer=$user
+    if [[ ! $maintainer ]]; then 
+        err "You must specify a maintainer" 
+    fi
+
+    curl -LfGs --data-urlencode "arg=$maintainer" "$rpcurl=msearch" | \
+        jshon  -e results -a -e Name -u -p -e Version -u -p -e CategoryID -u -p -e Description -u | \
+        sed 's/^$/-/' |  paste -s -d "\t\t\t\n"
+
+    exit
 }
 
 vote() {
@@ -248,7 +259,7 @@ pkgargs=()
 while [ "$#" -ne "0" ]; do
 	case $1 in
     --help|-h)     usage ;;
-    --version|-V)  action="version" ;;
+    --version|-V)  version ;;
     --check|-c)    action="check" ;;
     --vote|-v)     action="vote" ;;
     --unvote|-u)   action="unvote" ;;
@@ -263,10 +274,11 @@ done
 
 # sanity check
 [[ $action ]] || usage
-[[ -z $pkgargs ]] && err "Must specify a package."
+[[ $action != "maintainer" && -z $pkgargs ]] && err "Must specify a package."
 
 [[ $action = "vote" || $action = "check" || $action = "unvote" ]] && vote
 [[ $action = "submit" ]] && submit
+[[ $action = "maintainer" ]] && maintainer
 
 die 0
 
