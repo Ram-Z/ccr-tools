@@ -69,26 +69,50 @@ existsinccr() {
 
 getcat() {
     declare -A categories
-    categories=(
-        ["daemons"]="2"
-        ["devel"]="3"
-        ["editors"]="4"
-        ["educational"]="15"
-        ["emulators"]="5"
-        ["games"]="6"
-        ["gnome"]="7"
-        ["i18n"]="8"
-        ["kde"]="9"
-        ["lib"]="10"
-        ["lib32"]="19"
-        ["modules"]="11"
-        ["multimedia"]="12"
-        ["network"]="13"
-        ["office"]="14"
-        ["system"]="16"
-        ["utils"]="18"
-        ["x11"]="17"
-    )
+    if [[ "$1" =~ "^[0-9]+" ]]; then
+        categories=(
+            ["1"]="none"
+            ["2"]="daemons"
+            ["3"]="devel"
+            ["4"]="editors"
+            ["15"]="educational"
+            ["5"]="emulators"
+            ["6"]="games"
+            ["7"]="gnome"
+            ["8"]="i18n"
+            ["9"]="kde"
+            ["10"]="lib"
+            ["19"]="lib32"
+            ["11"]="modules"
+            ["12"]="multimedia"
+            ["13"]="network"
+            ["14"]="office"
+            ["16"]="system"
+            ["18"]="utils"
+            ["17"]="x11"
+        )
+    else
+        categories=(
+            ["daemons"]="2"
+            ["devel"]="3"
+            ["editors"]="4"
+            ["educational"]="15"
+            ["emulators"]="5"
+            ["games"]="6"
+            ["gnome"]="7"
+            ["i18n"]="8"
+            ["kde"]="9"
+            ["lib"]="10"
+            ["lib32"]="19"
+            ["modules"]="11"
+            ["multimedia"]="12"
+            ["network"]="13"
+            ["office"]="14"
+            ["system"]="16"
+            ["utils"]="18"
+            ["x11"]="17"
+        )
+    fi
 
     if [[ "${1}" = "" ]]; then
         catvalue="1"
@@ -167,13 +191,14 @@ getccrid() {
 maintainer() {
     if [[ ! $maintainer ]]; then 
         getcred
-        [[ $user ]] && maintainer=$user || err "You must specify a maintainer" 
+        [[ $user ]] && maintainer=$user || err "You must specify a maintainer." 
     fi
 
     # this will break if the description contains '@'
     curl -LfGs --data-urlencode "arg=$maintainer" "$rpcurl=msearch" | \
-        jshon  -e results -a -e Name -u -p -e Version -u -p -e CategoryID -u -p -e Description -u | \
-        sed 's/^$/-/' |  paste -s -d "@@@\n" | column -t -s '@'
+        jshon -Q -e results -a -e Name -u -p -e Version -u -p -e CategoryID -u -p -e Description -u | \
+        sed 's/^$/-/' |  paste -s -d "@@@\n" | sed -e "s/\(.*@.*@\)\([0-9][0-9]*\)@/\1test@/g" | \
+        column -t -s '@' | cut -c1-$(tput cols)
 
     exit
 }
