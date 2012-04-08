@@ -58,8 +58,10 @@ usage() {
 
 # Tests whether $1 exists on the ccr
 existsinccr() {
-  rpcinfo "$1"
-  [[ "$(jshon -Qe type -u < "$tmpdir/$1.info")" = "info" ]]
+    retval=$(curl -LfGs --data-urlencode "arg=$pkgname" "$rpcurl=info" | \
+        jshon -Qe type -u)
+
+    [[ $retval = "info" && ! $category ]]
 }
 
 getcat() {
@@ -214,11 +216,8 @@ submit() {
 
     # get the pkgname from the archive
     pkgname=$(tar -xzOf $pkgargs --no-anchored 'PKGBUILD' | grep '^pkgname=..*' | sed 's/.*=//')
-    # check if pkg already exists
-    retval=$(curl -LfGs --data-urlencode "arg=$pkgname" "$rpcurl=info" | \
-        jshon -e type -u)
 
-    if [[ $retval = "error" && ! $category ]]; then
+    if ! existsinccr $pkgname && [[ ! $category ]]; then
         err "You must provide a category."
         die 2
     fi
