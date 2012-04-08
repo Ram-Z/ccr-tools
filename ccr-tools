@@ -165,15 +165,15 @@ getccrid() {
 }
 
 maintainer() {
-
     if [[ ! $maintainer ]]; then 
         getcred
         [[ $user ]] && maintainer=$user || err "You must specify a maintainer" 
     fi
 
+    # this will break if the description contains '@'
     curl -LfGs --data-urlencode "arg=$maintainer" "$rpcurl=msearch" | \
         jshon  -e results -a -e Name -u -p -e Version -u -p -e CategoryID -u -p -e Description -u | \
-        sed 's/^$/-/' |  paste -s -d "\t\t\t\n"
+        sed 's/^$/-/' |  paste -s -d "@@@\n" | column -t -s '@'
 
     exit
 }
