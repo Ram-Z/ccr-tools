@@ -6,6 +6,7 @@ ccrbaseurl="http://chakra-linux.org/ccr/"
 ccrurl="${ccrbaseurl}packages.php"
 idurl="${ccrbaseurl}rpc.php?type=info&arg="
 checkurl="${ccrbaseurl}packages.php?ID="
+submiturl="${ccrbaseurl}pkgsubmit.php"
 
 # Defining some functions needed by main program
 
@@ -16,14 +17,19 @@ die() {
     exit $1
 }
 
+err() {
+    echo -e "$1"
+    die 1
+}
+
 version() {
     echo "ccr-tools - version $ver"
     echo
     echo " http://cruznick.github.com/"
-    die 0
+    exit
 }
 
-use() {
+usage() {
     echo "ccr-tools - version $ver"
     echo
     echo "usage: ccr-tools <option> <pkgname1> <pkgname2> ..."
@@ -46,6 +52,41 @@ use() {
     echo "Fork of aurvote <http://archlinux.fr/>"
     echo "written by cruznick <cruznick at archlinux dot us>"
     echo " http://cruznick.github.com"
+    exit
+}
+
+getcat() {
+    declare -A categories
+    categories=(
+        ["daemons"]="2"
+        ["devel"]="3"
+        ["editors"]="4"
+        ["educational"]="15"
+        ["emulators"]="5"
+        ["games"]="6"
+        ["gnome"]="7"
+        ["i18n"]="8"
+        ["kde"]="9"
+        ["lib"]="10"
+        ["lib32"]="19"
+        ["modules"]="11"
+        ["multimedia"]="12"
+        ["network"]="13"
+        ["office"]="14"
+        ["system"]="16"
+        ["utils"]="18"
+        ["x11"]="17"
+    )
+
+    if [[ "${1}" = "" ]]; then
+        catvalue="1"
+    else
+        catvalue=${categories[$1]}
+    fi
+    if [[ "${catvalue}" == "" ]]; then
+        echo "'$1' is not a valid category."
+        die 1
+    fi
 }
 
 urlencode() {
@@ -91,6 +132,8 @@ getcred() {
 }
 
 login() {
+    getcred
+
     # logins to ccr and keeps session alive
     umask 077
     curl -Ss --cookie-jar "$tempdir/cjar" --output /dev/null ${ccrbaseurl} 
@@ -104,18 +147,26 @@ login() {
     fi
 }
 
+getccrid() {
+    ccrid=$(wget --quiet "${idurl}${1}" -O - | \
+    sed 's/.*"ID":"\([^"]*\)".*/\1/;q')
+}
+
 vote() {
+    login
+
     # vote/unvote/check for each package
-    for pkgname in ${pkgnames[@]}; do
-        ccrid=$(wget --quiet "${idurl}${pkgname}" -O - | \
-        sed 's/.*"ID":"\([^"]*\)".*/\1/;q')
+    for pkgname in ${pkgargs[@]}; do
+        getccrid $pkgname
         if [ -z "$ccrid" ]; then
             echo "$pkgname was not found on CCR"
             continue
         fi
         if [ "$action" = "check" ]; then
+            curl -Ss --cookie "$tempdir/cjar"  --cookie-jar "$tempdir/cjar" \
+                --output "$tempdir/$pkgname" \
+                "${checkurl}${ccrid}"
             echo -n "$pkgname:  "
-            curl -Ss --cookie "$tempdir/cjar"  --cookie-jar "$tempdir/cjar"  --output "$tempdir/$pkgname" "${checkurl}${ccrid}"
             if grep -q "type='submit' class='button' name='do_UnVote'" $tempdir/$pkgname; then
                 echo "already voted"
             elif grep -q "type='submit' class='button' name='do_Vote'" $tempdir/$pkgname; then
@@ -145,63 +196,62 @@ vote() {
 
 submit() {
     # we don't even want to submit something different than source files
-    if [[ ! -f $pkgsrc || $pkgsrc != *.src.tar.gz ]]; then
+    if [[ ! -f $pkgargs || $pkgargs != *.src.tar.gz ]]; then
        echo "`basename ${pkgsrc}` is not a source package!"
        die 1
     fi
 
+    # FIXME category is not actually needed
+    #+when updating without cat, it keeps tho old one
+    #+when uploading for the first time without category, I don't know what'll happen 
+    #+but there dosn't seem to be error checking on the backend side
     # check for category
-    if [[ $category == "" ]]; then
-        echo "You must provide a category."
-        die 1
-    fi
+    #if [[ $category == "" ]]; then
+    #    echo "You must provide a category."
+    #    die 1
+    #fi
 
     getcat $category
     
-    getcred
     login
 
-    echo "`basename ${pkgsrc}`"
-    curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" \
+    # TODO allow multiple files to be uploaded.
+    #+advantages: you can update lots of packages at once
+    #+drawback, only one category can be selected for all of them
+    local error
+    error=$(curl -sS --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" \
         --form "pkgsubmit=1" \
-        --form "pfile=@${pkgsrc}" \
         --form "category=${catvalue}" \
-        --output /dev/null \
-        "${submiturl}"
+        --form "pfile=@${pkgargs}" \
+        "${submiturl}" | \
+        sed -n "s|.*<span class='error'>\(.*\)</span>.*|\1|p")
+    [[ $error ]] || error="Successfully uploaded."
+    echo "`basename ${pkgargs} ".src.tar.gz"` : $error"
 }
 
 ### MAIN PROGRAM ###
-action="vote"
+pkgargs=()
 while [ "$#" -ne "0" ]; do
 	case $1 in
-		--help|-h)
-			use
-			die 0
-			;;
-		--version|-V) version;;
-		--check|-c) action="check";;
-		--vote|-v) action="vote";;
-		--unvote|-u) action="unvote";;
-		--*|-*)
-			use
-			die 0
-			;;
-		*)
-			pkgnames[${#pkgnames[@]}]=$1
-			;;
+    --help|-h)     usage ;;
+    --version|-V)  action="version" ;;
+    --check|-c)    action="check" ;;
+    --vote|-v)     action="vote" ;;
+    --unvote|-u)   action="unvote" ;;
+    --submit|-s)   action="submit" ;;
+    --category|-C) shift ; category=$1 ; shift ;;
+    --*|-*)        echo "ccr-tools: Option \`$1' is not valid." ; exit 5 ;;
+    *)             pkgargs+=("$1") ;;
 	esac
 	shift
 done
-		
-if [ ${#pkgnames[@]} -eq 0 ]; then
-	use
-	die 0
-fi
 
-getcred
-login
+# sanity check
+[[ $action ]] || usage
+[[ -z $pkgargs ]] && err "Must specify a package."
 
-vote
+[[ $action = "vote" || $action = "check" || $action = "unvote" ]] && vote
+[[ $action = "submit" ]] && submit
 
 die 0
 
