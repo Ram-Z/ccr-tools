@@ -26,7 +26,7 @@ err() {
 version() {
     echo "ccr-tools - version $ver"
     echo
-    echo " http://cruznick.github.com/"
+    echo " http://ccr-tools.github.com/"
     exit
 }
 
