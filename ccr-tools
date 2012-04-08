@@ -138,13 +138,13 @@ getcred() {
     fi
       
     [ -r "$configrc" ] && source $configrc
-
-    while [[ -z $user ]]; do read -p "please enter your CCR username: " user; done
-    while [[ -z $pass ]]; do read -p "please enter your CCR password: " -s pass && echo; done
 }
 
 login() {
     getcred
+
+    while [[ -z $user ]]; do read -p "please enter your CCR username: " user; done
+    while [[ -z $pass ]]; do read -p "please enter your CCR password: " -s pass && echo; done
 
     # logins to ccr and keeps session alive
     umask 077
@@ -165,11 +165,10 @@ getccrid() {
 }
 
 maintainer() {
-    getcred
 
-    [[ ! $maintainer && $user ]] && maintainer=$user
     if [[ ! $maintainer ]]; then 
-        err "You must specify a maintainer" 
+        getcred
+        [[ $user ]] && maintainer=$user || err "You must specify a maintainer" 
     fi
 
     curl -LfGs --data-urlencode "arg=$maintainer" "$rpcurl=msearch" | \
