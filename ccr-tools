@@ -3,6 +3,7 @@ ver=0.1
 tempdir=$(mktemp -d)
 configrc=$HOME/.config/ccr-toolsrc
 ccrbaseurl="http://chakra-linux.org/ccr/"
+rpcurl="${ccrbaseurl}rpc.php?type"
 ccrurl="${ccrbaseurl}packages.php"
 idurl="${ccrbaseurl}rpc.php?type=info&arg="
 checkurl="${ccrbaseurl}packages.php?ID="
@@ -53,6 +54,12 @@ usage() {
     echo "written by cruznick <cruznick at archlinux dot us>"
     echo " http://cruznick.github.com"
     exit
+}
+
+# Tests whether $1 exists on the ccr
+existsinccr() {
+  rpcinfo "$1"
+  [[ "$(jshon -Qe type -u < "$tmpdir/$1.info")" = "info" ]]
 }
 
 getcat() {
@@ -152,6 +159,10 @@ getccrid() {
     sed 's/.*"ID":"\([^"]*\)".*/\1/;q')
 }
 
+maintainer() {
+    true
+}
+
 vote() {
     login
 
@@ -201,15 +212,16 @@ submit() {
        die 1
     fi
 
-    # FIXME category is not actually needed
-    #+when updating without cat, it keeps tho old one
-    #+when uploading for the first time without category, I don't know what'll happen 
-    #+but there dosn't seem to be error checking on the backend side
-    # check for category
-    #if [[ $category == "" ]]; then
-    #    echo "You must provide a category."
-    #    die 1
-    #fi
+    # get the pkgname from the archive
+    pkgname=$(tar -xzOf $pkgargs --no-anchored 'PKGBUILD' | grep '^pkgname=..*' | sed 's/.*=//')
+    # check if pkg already exists
+    retval=$(curl -LfGs --data-urlencode "arg=$pkgname" "$rpcurl=info" | \
+        jshon -e type -u)
+
+    if [[ $retval = "error" && ! $category ]]; then
+        err "You must provide a category."
+        die 2
+    fi
 
     getcat $category
     
@@ -240,6 +252,7 @@ while [ "$#" -ne "0" ]; do
     --unvote|-u)   action="unvote" ;;
     --submit|-s)   action="submit" ;;
     --category|-C) shift ; category=$1 ; shift ;;
+    --maintainer|-m) action="maintainer"; shift ; maintainer=$1 ; break ;;
     --*|-*)        echo "ccr-tools: Option \`$1' is not valid." ; exit 5 ;;
     *)             pkgargs+=("$1") ;;
 	esac
