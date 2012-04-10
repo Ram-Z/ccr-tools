@@ -9,7 +9,6 @@
 if [[ $EUID == 0 ]]; then
   echo "This script must not be run as root!" 
   echo "ccr will ask for your password if needed."
-  echo "Exiting..."
   exit 1
 fi
 
