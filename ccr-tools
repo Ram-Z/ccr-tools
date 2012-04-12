@@ -69,7 +69,7 @@ existsinccr() {
 
 getcat() {
     declare -A categories
-    if [[ "$1" =~ "^[0-9]+" ]]; then
+    if [[ "$1" =~ ^[0-9]+ ]]; then
         categories=(
             ["1"]="none"
             ["2"]="daemons"
@@ -197,7 +197,7 @@ maintainer() {
     # this will break if the description contains '@'
     curl -LfGs --data-urlencode "arg=$maintainer" "$rpcurl=msearch" | \
         jshon -Q -e results -a -e Name -u -p -e Version -u -p -e CategoryID -u -p -e Description -u | \
-        sed 's/^$/-/' |  paste -s -d "@@@\n" | sed -e "s/\(.*@.*@\)\([0-9][0-9]*\)@/\1test@/g" | \
+        paste -s -d "@@@\n" | sed -e "s/\(.*@.*@\)\([0-9][0-9]*\)@/\1test@/g" | \
         column -t -s '@' | cut -c1-$(tput cols)
 
     exit
@@ -253,7 +253,7 @@ submit() {
     fi
 
     # get the pkgname from the archive
-    pkgname=$(tar -xzOf $pkgargs --no-anchored 'PKGBUILD' | grep '^pkgname=..*' | sed 's/.*=//')
+    pkgname=$(tar -xzOf $pkgargs --no-anchored 'PKGBUILD' | sed -n "s/pkgname=['\"]\?\([^'\"]*\)['\"]\?/\1/p")
 
     if ! existsinccr $pkgname && [[ ! $category ]]; then
         err "You must provide a category."
