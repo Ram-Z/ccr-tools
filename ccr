@@ -5,6 +5,13 @@
 # Ccr is a fork of Packer by Matthew Bruenig <matthewbruenig@gmail.com>
 # Licensed under GPL version 3
 
+# prevent running the script as root
+if [[ $EUID == 0 ]]; then
+  echo "This script must not be run as root!" 
+  echo "ccr will ask for your password if needed."
+  exit 1
+fi
+
 # set tmpfile stuff, clean tmpdir
 tmpdir="${TMPDIR:-/tmp}/ccrtmp-$UID"
 rm -rf "$tmpdir" &>/dev/null
