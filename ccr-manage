@@ -1,0 +1,39 @@
+#!/bin/bash
+
+varfile="$1" # change this variable name to whatever- see line 2 of function
+
+manage() { # change this function name to something that makes more sense
+  # get the variables from the file into memory
+  source "$varfile" || echo "'$varfile' is invalid or cannot be read."
+
+  for pkg in "${_pkglist[@]}"; do 
+    # find PKGBUILDs
+    if [[ -w "$pkg/PKGBUILD" ]]; then
+      pkgb="$pkg/PKGBUILD"
+    elif [[ -w "$pkg/$pkg/PKGBUILD" ]]; then
+      pkgb="$pkg/PKGBUILD"
+    else
+      echo "Where is the '$pkg' PKGBUILD?"
+      echo -n "> "
+      read pkgb
+      [[ -w "$pkgb" ]] || (echo "That file is not writable."; exit 1) || continue
+    fi
+
+    # compare version numbers and update PKGBUILDs
+    local npkgver="$(eval echo \$$pkg)"
+    local opkgver="$(grep "^pkgver=.*" "$pkgb" | sed 's/pkgver=//')"
+    if [[ $npkgver > $opkgver ]]; then
+      echo -e "New version of $pkg found: $npkgver\nOld version: $opkgver"
+      echo -n "Would you like to update the pkgbuild? [Y/n] "
+      read ans
+      if [[ $ans == n || $ans == N || $ans == no || $ans == NO ]]; then
+        echo "Not updating $pkg PKGBUILD."
+        continue
+      else
+        sed -i "s/pkgver=$opkgver/pkgver=$npkgver/" "$pkgb"
+      fi
+    fi
+  done
+}
+
+manage "$1"
