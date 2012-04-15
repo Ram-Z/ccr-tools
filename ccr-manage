@@ -7,6 +7,8 @@ manage() { # change this function name to something that makes more sense
   [[ -n $varfile ]] && source "$varfile" || echo "'$varfile' is invalid or cannot be read."
 
   for pkg in "${_pkglist[@]}"; do 
+    local pkgvar="$(echo $pkg | sed 's/-/_/g')"
+
     # find PKGBUILDs
     if [[ -w "$pkg/PKGBUILD" ]]; then
       pkgb="$pkg/PKGBUILD"
@@ -20,7 +22,7 @@ manage() { # change this function name to something that makes more sense
     fi
 
     # compare version numbers and update PKGBUILDs
-    local npkgver="$(eval echo \$$pkg)"
+    local npkgver="$(eval echo \$$pkgvar)"
     local opkgver="$(grep "^pkgver=.*" "$pkgb" | sed 's/pkgver=//')"
     if [[ $npkgver > $opkgver ]]; then
       if [[ $dontask != 1 ]]; then
