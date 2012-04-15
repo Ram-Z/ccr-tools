@@ -23,10 +23,14 @@ manage() { # change this function name to something that makes more sense
     local npkgver="$(eval echo \$$pkg)"
     local opkgver="$(grep "^pkgver=.*" "$pkgb" | sed 's/pkgver=//')"
     if [[ $npkgver > $opkgver ]]; then
-      echo -e "New version of $pkg found: $npkgver\nOld version: $opkgver"
-      echo -n "Would you like to update the pkgbuild? [Y/n] "
-      read ans
-      if [[ $ans == n || $ans == N || $ans == no || $ans == NO || $dontask == 1 ]]; then
+      if [[ $dontask != 1 ]]; then
+        echo -e "New version of $pkg found: $npkgver\nOld version: $opkgver"
+        echo -n "Would you like to update the pkgbuild? [Y/n] "
+        read ans
+      else
+        ans=y
+      fi
+      if [[ $ans == n || $ans == N || $ans == no || $ans == NO ]]; then
         echo "Not updating $pkg PKGBUILD."
         continue
       else
