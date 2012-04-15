@@ -26,7 +26,7 @@ manage() { # change this function name to something that makes more sense
       echo -e "New version of $pkg found: $npkgver\nOld version: $opkgver"
       echo -n "Would you like to update the pkgbuild? [Y/n] "
       read ans
-      if [[ $ans == n || $ans == N || $ans == no || $ans == NO ]]; then
+      if [[ $ans == n || $ans == N || $ans == no || $ans == NO || $dontask == 1 ]]; then
         echo "Not updating $pkg PKGBUILD."
         continue
       else
