@@ -4,7 +4,7 @@ varfile="$1" # change this variable name to whatever- see line 2 of function
 
 manage() { # change this function name to something that makes more sense
   # get the variables from the file into memory
-  source "$varfile" || echo "'$varfile' is invalid or cannot be read."
+  [[ -n $varfile ]] && source "$varfile" || echo "'$varfile' is invalid or cannot be read."
 
   for pkg in "${_pkglist[@]}"; do 
     # find PKGBUILDs
