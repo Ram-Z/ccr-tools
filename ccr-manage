@@ -31,9 +31,12 @@ manage() { # change this function name to something that makes more sense
         continue
       else
         sed -i "s/pkgver=$opkgver/pkgver=$npkgver/" "$pkgb"
+        sed -i 's/^pkgrel=.*/pkgrel=1/' "$pkgb"
+        upkgz+=("$pkg")
       fi
     fi
   done
+  echo "PKGBUILDs updated: ${upkgz[@]-None}"
 }
 
 manage "$1"
