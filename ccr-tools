@@ -1,5 +1,5 @@
 #!/bin/bash
-ver=0.1
+ver=0.2
 tempdir=$(mktemp -d)
 configrc=$HOME/.config/ccr-toolsrc
 ccrbaseurl="http://chakra-linux.org/ccr/"
@@ -10,6 +10,28 @@ checkurl="${ccrbaseurl}packages.php?ID="
 submiturl="${ccrbaseurl}pkgsubmit.php"
 
 # Defining some functions needed by main program
+
+declare -A categories
+categories=(
+    ["daemons"]="2"
+    ["devel"]="3"
+    ["editors"]="4"
+    ["educational"]="15"
+    ["emulators"]="5"
+    ["games"]="6"
+    ["gnome"]="7"
+    ["i18n"]="8"
+    ["kde"]="9"
+    ["lib"]="10"
+    ["lib32"]="19"
+    ["modules"]="11"
+    ["multimedia"]="12"
+    ["network"]="13"
+    ["office"]="14"
+    ["system"]="16"
+    ["utils"]="18"
+    ["x11"]="17"
+)
 
 die() {
     if [ -d "$tempdir" ]; then
@@ -42,6 +64,7 @@ usage() {
     echo "ccr-tools --check,      -c    check for voted packages"
     echo "ccr-tools --submit,     -s    submit a new package"
     echo "ccr-tools --category,   -C    category for new packages"
+    echo "ccr-tools -sC                 list all valid categories"
     echo "ccr-tools --maintainer, -m    list all packages by maintainer"
     echo
     echo " example:  ccr-tools --vote shake bfilter"
@@ -52,10 +75,6 @@ usage() {
     echo
     echo "To create a new account just go to:"
     echo "http://chakra-linux.org/ccr/account.php"
-    echo 
-    echo "Fork of aurvote <http://archlinux.fr/>"
-    echo "written by cruznick <cruznick at archlinux dot us>"
-    echo " http://cruznick.github.com"
     exit
 }
 
@@ -67,6 +86,7 @@ existsinccr() {
     [[ $retval = "info" && ! $category ]]
 }
 
+<<<<<<< HEAD
 getcat() {
     declare -A categories
     if [[ "$1" =~ ^[0-9]+ ]]; then
@@ -125,6 +145,8 @@ getcat() {
     fi
 }
 
+=======
+>>>>>>> efd36523f897af8bdc5e8e9ea114386685189ea1
 urlencode() {
     echo $@ | LANG=C awk '
         BEGIN {
@@ -197,7 +219,11 @@ maintainer() {
     # this will break if the description contains '@'
     curl -LfGs --data-urlencode "arg=$maintainer" "$rpcurl=msearch" | \
         jshon -Q -e results -a -e Name -u -p -e Version -u -p -e CategoryID -u -p -e Description -u | \
+<<<<<<< HEAD
         sed 's/^$/-/' |  paste -s -d "@@@\n" | sed -e "s/\(.*@.*@\)\([0-9][0-9]*\)@/\1\2@/g" | \
+=======
+        paste -s -d "@@@\n" | sed -e "s/\(.*@.*@\)\([0-9][0-9]*\)@/\1test@/g" | \
+>>>>>>> efd36523f897af8bdc5e8e9ea114386685189ea1
         column -t -s '@' | cut -c1-$(tput cols)
 
     exit
@@ -248,20 +274,25 @@ vote() {
 submit() {
     # we don't even want to submit something different than source files
     if [[ ! -f $pkgargs || $pkgargs != *.src.tar.gz ]]; then
-       echo "`basename ${pkgsrc}` is not a source package!"
+       echo "`basename ${pkgargs}` is not a source package!"
        die 1
     fi
 
     # get the pkgname from the archive
-    pkgname=$(tar -xzOf $pkgargs --no-anchored 'PKGBUILD' | grep '^pkgname=..*' | sed 's/.*=//')
+    pkgname=$(tar -xzOf $pkgargs --no-anchored 'PKGBUILD' | sed -n "s/pkgname=['\"]\?\([^'\"]*\)['\"]\?/\1/p")
 
     if ! existsinccr $pkgname && [[ ! $category ]]; then
-        err "You must provide a category."
+        err "Since $pkgname is not in CCR yet. You must provide a category."
         die 2
     fi
 
-    getcat $category
+    catvalue=${categories[$category]}
     
+    if [[ "${catvalue}" == "" ]]; then
+        echo "'$category' is not a valid category."
+        die 1
+    fi
+
     login
 
     # TODO allow multiple files to be uploaded.
@@ -278,6 +309,13 @@ submit() {
     echo "`basename ${pkgargs} ".src.tar.gz"` : $error"
 }
 
+listcat () {
+    for c in "${!categories[@]}"; do
+        echo "$c"
+    done | sort
+    exit 0
+}
+
 ### MAIN PROGRAM ###
 pkgargs=()
 while [ "$#" -ne "0" ]; do
@@ -289,6 +327,7 @@ while [ "$#" -ne "0" ]; do
     --unvote|-u)   action="unvote" ;;
     --submit|-s)   action="submit" ;;
     --category|-C) shift ; category=$1 ; shift ;;
+    -sC)           listcat ;;
     --maintainer|-m) action="maintainer"; shift ; maintainer=$1 ; break ;;
     --*|-*)        echo "ccr-tools: Option \`$1' is not valid." ; exit 5 ;;
     *)             pkgargs+=("$1") ;;
