@@ -6,6 +6,7 @@ ccrbaseurl="http://chakra-linux.org/ccr/"
 rpcurl="${ccrbaseurl}rpc.php?type"
 ccrurl="${ccrbaseurl}packages.php"
 idurl="${ccrbaseurl}rpc.php?type=info&arg="
+voteurl="${ccrbaseurl}packages.php"
 checkurl="${ccrbaseurl}packages.php?ID="
 submiturl="${ccrbaseurl}pkgsubmit.php"
 
@@ -145,8 +146,7 @@ login() {
 }
 
 getccrid() {
-    ccrid=$(wget --quiet "${idurl}${1}" -O - | \
-    sed 's/.*"ID":"\([^"]*\)".*/\1/;q')
+    wget --quiet "${idurl}${1}" -O - | sed -n 's/.*"ID":"\([^"]*\)".*/\1/p'
 }
 
 maintainer() {
@@ -155,7 +155,7 @@ maintainer() {
         [[ $user ]] && maintainer=$user || err "You must specify a maintainer." 
     fi
 
-    # this will break if the description contains '@'
+    # this will break the output if the description contains '@'
     curl -LfGs --data-urlencode "arg=$maintainer" "$rpcurl=msearch" | \
         jshon -Q -e results -a -e Name -u -p -e Version -u -p -e CategoryID -u -p -e Description -u | \
         paste -s -d "@@@\n" | sed -e "s/\(.*@.*@\)\([0-9][0-9]*\)@/\1test@/g" | \
@@ -167,46 +167,72 @@ maintainer() {
 vote() {
     login
 
-    # vote/unvote/check for each package
     for pkgname in ${pkgargs[@]}; do
-        getccrid $pkgname
-        if [ -z "$ccrid" ]; then
-            echo "$pkgname was not found on CCR"
-            continue
-        fi
-        if [ "$action" = "check" ]; then
-            curl -Ss --cookie "$tempdir/cjar"  --cookie-jar "$tempdir/cjar" \
-                --output "$tempdir/$pkgname" \
-                "${checkurl}${ccrid}"
-            echo -n "$pkgname:  "
-            if grep -q "type='submit' class='button' name='do_UnVote'" $tempdir/$pkgname; then
-                echo "already voted"
-            elif grep -q "type='submit' class='button' name='do_Vote'" $tempdir/$pkgname; then
-                echo "not voted"
-            else
-                echo "voted status not found"
-            fi
-        elif [ "$action" = "vote" ]; then
-            if curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" --data "IDs[${ccrid}]=1" \
-                --data "ID=${ccrid}" --data "do_Vote=1" \
-                --output /dev/null http://chakra-linux.org/ccr/packages.php; then
-                echo "$pkgname now voted"
-            else
-                echo "ERROR: Can't access $ccrurl"
-            fi
-        elif [ "$action" = "unvote" ]; then
-             if curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" --data "IDs[${ccrid}]=1" \
-                --data "ID=${ccrid}" --data "do_UnVote=1" \
-                --output /dev/null http://chakra-linux.org/ccr/packages.php; then
-                echo "$pkgname now unvoted"
-            else
-                echo "ERROR: Can't access $ccrurl"
-            fi
+        ccrid=$(getccrid $pkgname)
+        [[ -z "$ccrid" ]] && echo "$pkgname was not found on CCR" && continue
+
+        if curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" --data "IDs[${ccrid}]=1" \
+            --data "ID=${ccrid}" --data "do_Vote=1" \
+            --output /dev/null ${voteurl}; then
+            echo "$pkgname now voted"
+        else
+            echo "ERROR: Can't access $ccrurl"
         fi
     done
+
+    die 0
+}
+
+unvote() {
+    login
+
+    for pkgname in ${pkgargs[@]}; do
+        ccrid=$(getccrid $pkgname)
+        [ -z "$ccrid" ] && echo "$pkgname was not yound in CCR" && continue
+
+        if curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" --data "IDs[${ccrid}]=1" \
+            --data "ID=${ccrid}" --data "do_UnVote=1" \
+            --output /dev/null ${voteurl}; then
+            echo "$pkgname now unvoted"
+        else
+            echo "ERROR: Can't access $ccrurl"
+        fi
+    done
+
+    die 0
+}
+
+check() {
+    login
+
+    for pkgname in ${pkgargs[@]}; do
+        ccrid=$(getccrid $pkgname)
+        [ -z "$ccrid" ] && echo "$pkgname was not yound in CCR" && continue
+
+        curl -Ss --cookie "$tempdir/cjar"  --cookie-jar "$tempdir/cjar" \
+            --output "$tempdir/$pkgname" \
+            "${checkurl}${ccrid}"
+        echo -n "$pkgname:  "
+        if grep -q "type='submit' class='button' name='do_UnVote'" $tempdir/$pkgname; then
+            echo "already voted"
+        elif grep -q "type='submit' class='button' name='do_Vote'" $tempdir/$pkgname; then
+            echo "not voted"
+        else
+            echo "voted status not found"
+        fi
+    done
+
+    die 0
 }
 
 submit() {
+    [[ $category == "" ]] && catvalue=1 || catvalue=${categories[$category]}
+
+    if [[ "${catvalue}" == "" ]]; then
+        echo "'$category' is not a valid category."
+        die 1
+    fi
+
     # we don't even want to submit something different than source files
     if [[ ! -f $pkgargs || $pkgargs != *.src.tar.gz ]]; then
        echo "`basename ${pkgargs}` is not a source package!"
@@ -216,16 +242,9 @@ submit() {
     # get the pkgname from the archive
     pkgname=$(tar -xzOf $pkgargs --no-anchored 'PKGBUILD' | sed -n "s/pkgname=['\"]\?\([^'\"]*\)['\"]\?/\1/p")
 
-    if ! existsinccr $pkgname && [[ ! $category ]]; then
+    if ! existsinccr $pkgname && [[ $catvalue == 1 ]]; then
         err "Since $pkgname is not in CCR yet. You must provide a category."
         die 2
-    fi
-
-    catvalue=${categories[$category]}
-    
-    if [[ "${catvalue}" == "" ]]; then
-        echo "'$category' is not a valid category."
-        die 1
     fi
 
     login
@@ -242,9 +261,11 @@ submit() {
         sed -n "s|.*<span class='error'>\(.*\)</span>.*|\1|p")
     [[ $error ]] || error="Successfully uploaded."
     echo "`basename ${pkgargs} ".src.tar.gz"` : $error"
+
+    die 0
 }
 
-listcat () {
+listcat() {
     for c in "${!categories[@]}"; do
         echo "$c"
     done | sort
@@ -257,21 +278,48 @@ while [ "$#" -ne "0" ]; do
 	case $1 in
     --help|-h)     usage ;;
     --version|-V)  version ;;
-    --check|-c)    action="check" ;;
-    --vote|-v)     action="vote" ;;
-    --unvote|-u)   action="unvote" ;;
-    --submit|-s)   action="submit" ;;
-    --category|-C) shift ; category=$1 ; shift ;;
-    -sC)           listcat ;;
-    --maintainer|-m) action="maintainer"; shift ; maintainer=$1 ; break ;;
+    --check|-c) shift
+        pkgargs=$@
+        check
+        ;;
+    --vote|-v) shift
+        pkgargs=$@
+        vote
+        ;;
+    --unvote|-u) shift
+        pkgargs=$@
+        unvote
+        ;;
+    --submit|-s) shift
+        while [[ "$#" != 0 ]]; do
+            case $1 in
+            --category|-C) shift 
+                category=$1; shift
+                [[ $category == "" ]] && listcat
+                ;;
+            *)  pkgargs+=$1; shift
+                ;;
+            esac
+        done
+        submit
+        ;;
+    -sC) shift
+        category=$1; shift
+        [[ "$category" == "" ]] && listcat
+        pkgargs=$@
+        submit
+        ;;
+    --maintainer|-m) shift 
+        maintainer=$1 
+        maintainer
+        ;;
     --*|-*)        echo "ccr-tools: Option \`$1' is not valid." ; exit 5 ;;
-    *)             pkgargs+=("$1") ;;
 	esac
 	shift
 done
 
 # sanity check
-[[ $action ]] || usage
+usage
 [[ $action != "maintainer" && -z $pkgargs ]] && err "Must specify a package."
 
 [[ $action = "vote" || $action = "check" || $action = "unvote" ]] && vote
