@@ -64,7 +64,7 @@ usage() {
     echo "ccr-tools --unvote,     -u    unvote packages"
     echo "ccr-tools --check,      -c    check for voted packages"
     echo "ccr-tools --submit,     -s    submit a new package"
-    echo "ccr-tools --category,   -C    category for new packages"
+    echo "          --category,   -C    category for new packages"
     echo "ccr-tools -sC                 list all valid categories"
     echo "ccr-tools --maintainer, -m    list all packages by maintainer"
     echo
@@ -318,13 +318,7 @@ while [ "$#" -ne "0" ]; do
 	shift
 done
 
-# sanity check
 usage
-[[ $action != "maintainer" && -z $pkgargs ]] && err "Must specify a package."
-
-[[ $action = "vote" || $action = "check" || $action = "unvote" ]] && vote
-[[ $action = "submit" ]] && submit
-[[ $action = "maintainer" ]] && maintainer
 
 die 0
 
