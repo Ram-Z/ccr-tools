@@ -134,7 +134,7 @@ login() {
 
     # logs in to ccr and keeps session alive
     if [[ $rememberme == 1 ]]; then
-      otempdir="$tmpdir"
+      otempdir="$tempdir"
       tempdir="/tmp/ccr-tools-$UID"
       mkdir -p "$tempdir"
     fi
