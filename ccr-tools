@@ -273,7 +273,7 @@ submit() {
         "${submiturl}" | \
         sed -n "s|.*<span class='error'>\(.*\)</span>.*|\1|p")
     [[ $error ]] || error="Successfully uploaded."
-    echo "`basename ${pkgargs}.src.tar.gz`: $error"
+    echo "`basename ${pkgargs} ".src.tar.gz"`: $error"
 
     die 0
 }
