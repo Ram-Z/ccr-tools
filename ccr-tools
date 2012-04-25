@@ -234,7 +234,10 @@ submit() {
     fi
 
     # we don't even want to submit something different than source files
-    if [[ ! -f $pkgargs || $pkgargs != *.src.tar.gz ]]; then
+    if [[ -z $pkgargs ]]; then
+       echo "You must specify a source package to upload."
+       die 1
+    elif [[ ! -f $pkgargs || $pkgargs != *.src.tar.gz ]]; then
        echo "`basename ${pkgargs}` is not a source package!"
        die 1
     fi
@@ -243,7 +246,7 @@ submit() {
     pkgname=$(tar -xzOf $pkgargs --no-anchored 'PKGBUILD' | sed -n "s/pkgname=['\"]\?\([^'\"]*\)['\"]\?/\1/p")
 
     if ! existsinccr $pkgname && [[ $catvalue == 1 ]]; then
-        err "Since $pkgname is not in CCR yet. You must provide a category."
+        err "Since $pkgname is not in CCR yet, you must provide a category."
         die 2
     fi
 
@@ -260,7 +263,7 @@ submit() {
         "${submiturl}" | \
         sed -n "s|.*<span class='error'>\(.*\)</span>.*|\1|p")
     [[ $error ]] || error="Successfully uploaded."
-    echo "`basename ${pkgargs} ".src.tar.gz"` : $error"
+    echo "`basename ${pkgargs}.src.tar.gz`: $error"
 
     die 0
 }
