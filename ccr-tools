@@ -1,6 +1,6 @@
 #!/bin/bash
 ver=0.2
-tempdir=$(mktemp -d)
+tempdir="/tmp/ccr-tools-$UID"
 configrc=$HOME/.config/ccr-toolsrc
 ccrbaseurl="http://chakra-linux.org/ccr/"
 rpcurl="${ccrbaseurl}rpc.php?type"
@@ -35,10 +35,8 @@ categories=(
 )
 
 die() {
-    if [[ -d "$tempdir"  && $rememberme != 1 ]]; then
+    if [[ -d "$tempdir" && $rememberme != 1 ]]; then
         rm -rf "$tempdir"
-    elif [[ $rememberme == 1 ]]; then
-        rm -rf "$otempdir"
     fi
     exit $1
 }
@@ -69,7 +67,7 @@ usage() {
     echo "          --category,   -C    category for new packages"
     echo "ccr-tools -sC                 list all valid categories"
     echo "ccr-tools --maintainer, -m    list all packages by maintainer"
-    echo "ccr-tools --rememberme, -r    keep cookie until /tmp is cleaned"
+    echo "ccr-tools --forget, -f        don't keep cookies"
     echo
     echo " example:  ccr-tools --vote shake bfilter"
     echo
@@ -126,20 +124,16 @@ getcred() {
         mv ~/.ccr-toolsrc $configrc
     fi
       
-    [ -r "$configrc" ] && source $configrc
+    [[ -r "$configrc" ]] && source $configrc
+    rememberme=${rememberme-1}
 }
 
 login() {
     getcred
 
     # logs in to ccr and keeps session alive
-    if [[ $rememberme == 1 ]]; then
-      otempdir="$tempdir"
-      tempdir="/tmp/ccr-tools-$UID"
-      mkdir -p "$tempdir"
-    fi
     umask 077
-    if [[ ! -e "$tempdir/cjar" ]]; then
+    if [[ ! -e "$tempdir/cjar" || $rememberme != 1 ]]; then
       while [[ -z $user ]]; do read -p "please enter your CCR username: " user; done
       while [[ -z $pass ]]; do read -p "please enter your CCR password: " -s pass && echo; done
       curl -Ss --cookie-jar "$tempdir/cjar" --output /dev/null ${ccrbaseurl} 
@@ -326,7 +320,7 @@ while [ "$#" -ne "0" ]; do
         maintainer=$1 
         maintainer
         ;;
-    --rememberme|-r) rememberme=1;;
+    --forget|-f) rememberme=0;;
     --*|-*)        echo "ccr-tools: Option \`$1' is not valid." ; exit 5 ;;
 	esac
 	shift
