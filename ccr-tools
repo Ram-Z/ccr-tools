@@ -9,6 +9,7 @@ idurl="${ccrbaseurl}rpc.php?type=info&arg="
 voteurl="${ccrbaseurl}packages.php"
 checkurl="${ccrbaseurl}packages.php?ID="
 submiturl="${ccrbaseurl}pkgsubmit.php"
+mkdir -p "$tempdir"
 
 # Defining some functions needed by main program
 
@@ -137,12 +138,12 @@ login() {
       while [[ -z $user ]]; do read -p "please enter your CCR username: " user; done
       while [[ -z $pass ]]; do read -p "please enter your CCR password: " -s pass && echo; done
       curl -Ss --cookie-jar "$tempdir/cjar" --output /dev/null ${ccrbaseurl} 
+      curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar"  \
+               --data "user=$user" --data "passwd=$(urlencode $pass)" \
+               --location --output "$tempdir/ccrvote.login"  \
+               ${ccrbaseurl}
     fi
 
-    curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar"  \
-    --data "user=$user" --data "passwd=$(urlencode $pass)" \
-    --location --output "$tempdir/ccrvote.login"  \
-      ${ccrbaseurl}
     if grep --quiet "'error'>Bad username or password" "$tempdir/ccrvote.login";then
         echo "incorrect password: check $configrc file"
         die 1
