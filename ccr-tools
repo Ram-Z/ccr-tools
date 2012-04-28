@@ -260,8 +260,9 @@ submit() {
         --form "pkgsubmit=1" \
         --form "category=${catvalue}" \
         --form "pfile=@${pkgargs}" \
-        "${submiturl}" | \
-        sed -n "s|.*<span class='error'>\(.*\)</span>.*|\1|p")
+        "${submiturl}" | 
+        sed -n "s|.*<span class='error'>\(.*\)</span>.*|\1|p; s|^\(You must create an .* packages\.\).*|Sorry, you are not logged in.|p" | 
+        head -1)
     [[ $error ]] || error="Successfully uploaded."
     echo "`basename ${pkgargs} ".src.tar.gz"`: $error"
 
