@@ -68,7 +68,7 @@ usage() {
     echo "          --category,   -C    category for new packages"
     echo "ccr-tools -sC                 list all valid categories"
     echo "ccr-tools --maintainer, -m    list all packages by maintainer"
-    echo "ccr-tools --forget, -f        don't keep cookies"
+    echo "ccr-tools --forget,     -f    don't keep cookies"
     echo
     echo " example:  ccr-tools --vote shake bfilter"
     echo
