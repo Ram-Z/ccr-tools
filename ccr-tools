@@ -133,8 +133,10 @@ expired() {
     # check to see if the session has expired
     local etime
     [[ -r "$tempdir/cjar" ]] && etime=$(awk '{print $5}' <<< $(grep AURSID "$tempdir/cjar"))
-    if [[ $etime -le $(date +%s) ]]; then
-        echo 1 
+    if [[ $etime == 0 ]]; then 
+        echo 0
+    elif [[ $etime == "" || $etime -le $(date +%s) || "$(awk '{print $7}' <<< $(grep AURSID "$tempdir/cjar"))" == "deleted" ]]; then
+        echo 1
     else
         echo 0
     fi
@@ -335,8 +337,8 @@ while [ "$#" -ne "0" ]; do
         maintainer=$1 
         maintainer
         ;;
-    --forget|-f) rememberme=0;;
-    --*|-*)        echo "ccr-tools: Option \`$1' is not valid." ; exit 5 ;;
+    --forget|-f) rememberme=0 ;;
+    --*|-*) echo "ccr-tools: Option \`$1' is not valid."; exit 5 ;;
 	esac
 	shift
 done
