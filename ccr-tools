@@ -129,12 +129,24 @@ getcred() {
     rememberme=${rememberme-1}
 }
 
+expired() {
+    # check to see if the session has expired
+    local etime
+    [[ -r "$tempdir/cjar" ]] && etime=$(awk '{print $5}' <<< $(grep AURSID "$tempdir/cjar"))
+    if [[ $etime -le $(date +%s) ]]; then
+        echo 1 
+    else
+        echo 0
+    fi
+}
+
 login() {
     getcred
 
     # logs in to ccr and keeps session alive
     umask 077
-    if [[ ! -e "$tempdir/cjar" || $rememberme != 1 ]]; then
+    if [[ ! -e "$tempdir/cjar" || $rememberme != 1 || $(expired) == 1 ]]; then
+      [[ $(expired) == 1 ]] && echo "Your session has expired."
       while [[ -z $user ]]; do read -p "please enter your CCR username: " user; done
       while [[ -z $pass ]]; do read -p "please enter your CCR password: " -s pass && echo; done
       [[ $rememberme == 1 ]] && args=('-d' 'remember_me=on')
