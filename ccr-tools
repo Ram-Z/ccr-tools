@@ -137,11 +137,12 @@ login() {
     if [[ ! -e "$tempdir/cjar" || $rememberme != 1 ]]; then
       while [[ -z $user ]]; do read -p "please enter your CCR username: " user; done
       while [[ -z $pass ]]; do read -p "please enter your CCR password: " -s pass && echo; done
+      [[ $rememberme == 1 ]] && args=('-d' 'remember_me=on')
       curl -Ss --cookie-jar "$tempdir/cjar" --output /dev/null ${ccrbaseurl} 
       curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar"  \
                --data "user=$user" --data "passwd=$(urlencode $pass)" \
                --location --output "$tempdir/ccrvote.login"  \
-               ${ccrbaseurl}
+               ${args[@]} ${ccrbaseurl}
     fi
 
     if grep --quiet "'error'>Bad username or password" "$tempdir/ccrvote.login";then
