@@ -1,7 +1,7 @@
 #!/bin/bash
 ver=0.2
 tempdir="/tmp/ccr-tools-$UID"
-configrc=$HOME/.config/ccr-toolsrc
+configrc=$HOME/.config/ccr-tools/config
 ccrbaseurl="http://chakra-linux.org/ccr/"
 rpcurl="${ccrbaseurl}rpc.php?type"
 ccrurl="${ccrbaseurl}packages.php"
@@ -123,6 +123,18 @@ getcred() {
     if [ -r ~/.ccr-toolsrc ] && [ ! -r "$configrc" ]; then
         echo "Moving ~/.ccr-toolsrc to $configrc"
         mv ~/.ccr-toolsrc $configrc
+    fi
+    if [ -r ~/.config/ccr-toolsrc ] && [ ! -r "$configrc" ]; then
+        echo "Moving ~/.config/ccr-toolsrc to $configrc"
+        mv ~/.config/ccr-toolsrc $configrc
+    fi
+
+    if [ ! -r "$configrc" ]; then
+        cat << 'EOF' > "$configrc" 
+#user=
+#pass=
+#rememberme=1
+EOF
     fi
       
     [[ -r "$configrc" ]] && source $configrc
