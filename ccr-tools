@@ -231,7 +231,7 @@ check() {
         curl -Ss --cookie "$tempdir/cjar"  --cookie-jar "$tempdir/cjar" \
             --output "$tempdir/$pkgname" \
             "${checkurl}${ccrid}"
-        echo -n "$pkgname:  "
+        echo -n "$pkgname: "
         if grep -q "type='submit' class='button' name='do_UnVote'" $tempdir/$pkgname; then
             echo "already voted"
         elif grep -q "type='submit' class='button' name='do_Vote'" $tempdir/$pkgname; then
