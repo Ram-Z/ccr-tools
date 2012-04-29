@@ -180,7 +180,7 @@ maintainer() {
         jshon -Q -e results -a -e OutOfDate -u -p -e Name -u -p -e Version -u -p -e Category -u -p -e NumVotes -u -p -e Description -u |
         paste -s -d "  @@@\n" | column -t -s '@' | sort -k2 |
         sed "s/^1 \([^ ]* [^ ]*\)/$(printf "\033[1;31m")\1$(printf "\033[0m")/; s/^0 //" |
-        sed '/[^ ]* [^ ]* *none/s/none/'"$(printf "\033[33mnone\033[0m")/p" |
+        sed "/[^ ]* [^ ]* *none/s/\( *\)none/$(printf "\033[33m")\1none$(printf "\033[0m")/p" |
         cut -c1-$(tput cols)
     exit
 }
