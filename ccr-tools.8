@@ -19,14 +19,50 @@
 .\" * MAIN CONTENT STARTS HERE *
 .\" -----------------------------------------------------------------
 .SH "NAME"
-ccr-tools \- Short description here
+ccr-tools \- utility for CCR packagers
 .SH "SYNOPSIS"
 .sp
 \fIccr-tools\fR [options] [packages]
 .SH "DESCRIPTION"
 .sp
-Longer description here - note that all periods must look like this\&. 
+ccr-tools is a bash script allowing you to submit, (un)vote and list information on the packages of the Chakra Community Repository from the comfort of your shell.
 .SH "OPTIONS"
+
+.PP
+\fB\--check\fR <package-name>, \fB\-c\fR <package-name>
+.RS 4
+Check if you voted for a package or packages in CCR\&.
+.RE
+
+.PP
+\fB\--forget\fR, \fB\-m\fR
+.RS 4
+Deletes your cookie when the script finishes\&.
+.RE
+
+.PP
+\fB\--help\fR, \fB\-h\fR
+.RS 4
+Output a short help and exits\&.
+.RE
+
+.PP
+\fB\--maintainer\fR <maintainer-username>, \fB\-m\fR <maintainer-username>
+.RS 4
+Search for all packages owned by a CCR user\&. When <maintainer-username> is not given, it defaults to your username\&.
+.RE
+
+.PP
+\fB\--unvote\fR <package-name>, \fB\-u\fR <package-name>
+.RS 4
+Remove your vote for a package or packages in CCR\&.
+.RE
+
+.PP
+\fB\--version\fR, \fB\-V\fR
+.RS 4
+Output version information and exits\&.
+.RE
 
 .PP
 \fB\--vote\fR <package-name>, \fB\-v\fR <package-name>
@@ -35,11 +71,16 @@ Vote for a package or packages in CCR\&.
 .RE
 
 .PP
-\fB\--maintainer\fR <maintainer-username>, \fB\-m\fR <maintainer-username>
+\fB\--submit\fR <package-source>, \fB\-s\fR <package-source>
 .RS 4
-Search for all packages owned by a CCR user\&.
+Submit a package to the CCR\&.
 .RE
 
+.PP
+\fB\--category\fR <category-name>, \fB\-C\fR <category-name>
+.RS 4
+Select the category for the submitted package. Can only be used with --submit
+.RE
 
 .PP
 .SH "EXAMPLE USAGE"
@@ -52,8 +93,8 @@ Search for all packages owned by a CCR user\&.
 .sp -1
 .IP \(bu 2.3
 .\}
-Description of what the command below does: 
-ccr-tools \-\-someoption stuff
+Submit a new package foo: 
+ccr-tools \-submit foo.src.tar.gz --category devel
 .RE
 
 .sp
@@ -65,8 +106,8 @@ ccr-tools \-\-someoption stuff
 .sp -1
 .IP \(bu 2.3
 .\}
-Description of another command: 
-ccr-tools \-something blah
+Update an already existing package bar:
+ccr-tools \--submit bar.src.tar.gz
 .RE
 
 .sp
@@ -78,15 +119,28 @@ ccr-tools \-something blah
 .sp -1
 .IP \(bu 2.3
 .\}
-Same thing, as many times as you want: 
-ccr-tools \-other
+Vote for packages foo, bar and baz: 
+ccr-tools \-\-vote foo bar baz
+.RE
+
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+List all packages maintained by you, sorted by category: see \fBsort\fR(1)
+ccr-tools \-m | sort -k3
 .RE
 
 
 .sp
 .SH "CONFIGURATION"
 .sp
-Configuration information here. For example, where are the conf files, what options are valid in them, etc.
+A configuration file is located at ~/.config/ccr-tools/config. You can set your CCR username and password. If you don't the script will ask for them each time. You can also set whether or not your session should be saved.
 .sp
 
 
