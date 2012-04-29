@@ -176,10 +176,11 @@ maintainer() {
     fi
 
     # this will break the output if the description contains '@'
-    curl -LfGs --data-urlencode "arg=$maintainer" "$rpcurl=msearch" | \
+    curl -LfGs --data-urlencode "arg=$maintainer" "$rpcurl=msearch" | 
         jshon -Q -e results -a -e OutOfDate -u -p -e Name -u -p -e Version -u -p -e Category -u -p -e NumVotes -u -p -e Description -u |
-    paste -s -d "@ @@@\n" | sed "s/^0@\([^@]*\)/$(printf "\033[31m")\1$(printf "\033[0m")/" | column -t -s '@' | cut -c1-$(tput cols) | sort
-
+        paste -s -d "  @@@\n" | column -t -s '@' | sort -k2 |
+        sed "s/^1 \([^ ]* [^ ]*\)/$(printf "\033[1;31m")\1$(printf "\033[0m")/" | sed "s/^0 //" |
+        cut -c1-$(tput cols)
     exit
 }
 
