@@ -72,7 +72,7 @@ usage() {
     echo
     echo " example:  ccr-tools --vote shake bfilter"
     echo
-    echo "You can create ~/.config/ccr-toolsrc containing:"
+    echo "You can create ~/.config/ccr-tools/config containing:"
     echo "user=YOUR_CCR_USERNAME"
     echo "pass=YOUR_CCR_PASS"
     echo
