@@ -200,6 +200,7 @@ maintainer() {
 vote() {
     login
 
+    [[ -z ${pkgargs[@]} ]] && echo "You must specify a package." && die 1
     for pkgname in ${pkgargs[@]}; do
         ccrid=$(getccrid $pkgname)
         [[ -z "$ccrid" ]] && echo "$pkgname was not found on CCR" && continue
