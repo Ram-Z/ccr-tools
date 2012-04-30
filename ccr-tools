@@ -1,0 +1,362 @@
+#!/bin/bash
+ver=0.2
+tempdir="/tmp/ccr-tools-$UID"
+configrc=$HOME/.config/ccr-tools/config
+ccrbaseurl="http://chakra-linux.org/ccr/"
+rpcurl="${ccrbaseurl}rpc.php?type"
+ccrurl="${ccrbaseurl}packages.php"
+idurl="${ccrbaseurl}rpc.php?type=info&arg="
+voteurl="${ccrbaseurl}packages.php"
+checkurl="${ccrbaseurl}packages.php?ID="
+submiturl="${ccrbaseurl}pkgsubmit.php"
+mkdir -p "$tempdir"
+
+# Defining some functions needed by main program
+
+declare -A categories
+categories=(
+    ["daemons"]="2"
+    ["devel"]="3"
+    ["editors"]="4"
+    ["educational"]="15"
+    ["emulators"]="5"
+    ["games"]="6"
+    ["gnome"]="7"
+    ["i18n"]="8"
+    ["kde"]="9"
+    ["lib"]="10"
+    ["lib32"]="19"
+    ["modules"]="11"
+    ["multimedia"]="12"
+    ["network"]="13"
+    ["office"]="14"
+    ["system"]="16"
+    ["utils"]="18"
+    ["x11"]="17"
+)
+
+die() {
+    if [[ -d "$tempdir" && $rememberme != 1 ]]; then
+        rm -rf "$tempdir"
+    fi
+    exit $1
+}
+
+err() {
+    echo -e "$1"
+    die 1
+}
+
+version() {
+    echo "ccr-tools - version $ver"
+    echo
+    echo " http://ccr-tools.github.com/"
+    exit
+}
+
+usage() {
+    echo "ccr-tools - version $ver"
+    echo
+    echo "usage: ccr-tools <option> <pkgname1> <pkgname2> ..."
+    echo
+    echo "ccr-tools --version,    -V    shows version"
+    echo "ccr-tools --help,       -h    shows this help"
+    echo "ccr-tools --vote,       -v    vote for packages"
+    echo "ccr-tools --unvote,     -u    unvote packages"
+    echo "ccr-tools --check,      -c    check for voted packages"
+    echo "ccr-tools --submit,     -s    submit a new package"
+    echo "          --category,   -C    category for new packages"
+    echo "ccr-tools -sC                 list all valid categories"
+    echo "ccr-tools --maintainer, -m    list all packages by maintainer"
+    echo "ccr-tools --forget,     -f    don't keep cookies"
+    echo
+    echo " example:  ccr-tools --vote shake bfilter"
+    echo
+    echo "You can create ~/.config/ccr-tools/config containing:"
+    echo "user=YOUR_CCR_USERNAME"
+    echo "pass=YOUR_CCR_PASS"
+    echo
+    echo "To create a new account just go to:"
+    echo "http://chakra-linux.org/ccr/account.php"
+    exit
+}
+
+# Tests whether $1 exists on the ccr
+existsinccr() {
+    retval=$(curl -LfGs --data-urlencode "arg=$pkgname" "$rpcurl=info" | \
+        jshon -Qe type -u)
+
+    [[ $retval = "info" && ! $category ]]
+}
+
+urlencode() {
+    echo $@ | LANG=C awk '
+        BEGIN {
+            split ("1 2 3 4 5 6 7 8 9 A B C D E F", hextab, " ")
+            hextab [0] = 0
+            for ( i=1; i<=255; ++i ) ord [ sprintf ("%c", i) "" ] = i + 0
+        }
+        {
+            encoded = ""
+            for ( i=1; i<=length ($0); ++i ) {
+                c = substr ($0, i, 1)
+                if ( c ~ /[a-zA-Z0-9.-]/ ) {
+                    encoded = encoded c             # safe character
+                } else if ( c == " " ) {
+                    encoded = encoded "+"   # special handling
+                } else {
+                    # unsafe character, encode it as a two-digit hex-number
+                    lo = ord [c] % 16
+                    hi = int (ord [c] / 16);
+                    encoded = encoded "%" hextab [hi] hextab [lo]
+                }
+            }
+                print encoded
+        }
+        END {
+        }
+    '
+}
+
+getcred() {
+    # Check config file
+    if [ -r ~/.ccr-toolsrc ] && [ ! -r "$configrc" ]; then
+        echo "Moving ~/.ccr-toolsrc to $configrc"
+        install -Dm644 ~/.ccr-toolsrc "$configrc" && rm ~/.ccr-toolsrc
+    fi
+    if [ -r ~/.config/ccr-toolsrc ] && [ ! -r "$configrc" ]; then
+        echo "Moving ~/.config/ccr-toolsrc to $configrc"
+        install -Dm644 ~/.config/ccr-toolsrc "$configrc" && rm ~/.config/ccr-toolsrc
+    fi
+
+    if [ ! -r "$configrc" ]; then
+        cat << 'EOF' > "$configrc" 
+#user=
+#pass=
+#rememberme=1
+EOF
+    fi
+      
+    [[ -r "$configrc" ]] && source $configrc
+    rememberme=${rememberme-1}
+}
+
+expired() {
+    # check to see if the session has expired
+    local etime
+    [[ -r "$tempdir/cjar" ]] && etime=$(awk '{print $5}' <<< $(grep AURSID "$tempdir/cjar"))
+    if [[ $etime == 0 ]]; then 
+        echo 0
+    elif [[ $etime == "" || $etime -le $(date +%s) || "$(awk '{print $7}' <<< $(grep AURSID "$tempdir/cjar"))" == "deleted" ]]; then
+        echo 1
+    else
+        echo 0
+    fi
+}
+
+login() {
+    getcred
+
+    # logs in to ccr and keeps session alive
+    umask 077
+    if [[ ! -e "$tempdir/cjar" || $rememberme != 1 || $(expired) == 1 ]]; then
+      [[ $(expired) == 1 ]] && echo "Your session has expired."
+      while [[ -z $user ]]; do read -p "please enter your CCR username: " user; done
+      while [[ -z $pass ]]; do read -p "please enter your CCR password: " -s pass && echo; done
+      [[ $rememberme == 1 ]] && args=('-d' 'remember_me=on')
+      curl -Ss --cookie-jar "$tempdir/cjar" --output /dev/null ${ccrbaseurl} 
+      curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar"  \
+               --data "user=$user" --data "passwd=$(urlencode $pass)" \
+               --location --output "$tempdir/ccrvote.login"  \
+               ${args[@]} ${ccrbaseurl}
+    fi
+
+    if grep --quiet "'error'>Bad username or password" "$tempdir/ccrvote.login";then
+        echo "incorrect password: check $configrc file"
+        die 1
+    fi
+}
+
+getccrid() {
+    wget --quiet "${idurl}${1}" -O - | sed -n 's/.*"ID":"\([^"]*\)".*/\1/p'
+}
+
+maintainer() {
+    if [[ ! $maintainer ]]; then 
+        getcred
+        [[ $user ]] && maintainer=$user || err "You must specify a maintainer." 
+    fi
+
+    # this will break the output if the description contains '@'
+    curl -LfGs --data-urlencode "arg=$maintainer" "$rpcurl=msearch" | 
+        jshon -Q -e results -a -e OutOfDate -u -p -e Name -u -p -e Version -u -p -e Category -u -p -e NumVotes -u -p -e Description -u |
+        paste -s -d "  @@@\n" | column -t -s '@' | sort -k2 |
+        sed "s/^1 \([^ ]* [^ ]*\)/$(printf "\033[1;31m")\1$(printf "\033[0m")/; s/^0 //" |
+        sed "/[^ ]* [^ ]* *none/s/\( *\)none/$(printf "\033[33m")\1none$(printf "\033[0m")/" |
+        cut -c1-$(tput cols)
+    exit
+}
+
+vote() {
+    login
+
+    [[ -z ${pkgargs[@]} ]] && echo "You must specify a package." && die 1
+    for pkgname in ${pkgargs[@]}; do
+        ccrid=$(getccrid $pkgname)
+        [[ -z "$ccrid" ]] && echo "$pkgname was not found on CCR" && continue
+
+        if curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" --data "IDs[${ccrid}]=1" \
+            --data "ID=${ccrid}" --data "do_Vote=1" \
+            --output /dev/null ${voteurl}; then
+            echo "$pkgname now voted"
+        else
+            echo "ERROR: Can't access $ccrurl"
+        fi
+    done
+
+    die 0
+}
+
+unvote() {
+    login
+
+    for pkgname in ${pkgargs[@]}; do
+        ccrid=$(getccrid $pkgname)
+        [ -z "$ccrid" ] && echo "$pkgname was not yound in CCR" && continue
+
+        if curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" --data "IDs[${ccrid}]=1" \
+            --data "ID=${ccrid}" --data "do_UnVote=1" \
+            --output /dev/null ${voteurl}; then
+            echo "$pkgname now unvoted"
+        else
+            echo "ERROR: Can't access $ccrurl"
+        fi
+    done
+
+    die 0
+}
+
+check() {
+    login
+
+    for pkgname in ${pkgargs[@]}; do
+        ccrid=$(getccrid $pkgname)
+        [ -z "$ccrid" ] && echo "$pkgname was not yound in CCR" && continue
+
+        curl -Ss --cookie "$tempdir/cjar"  --cookie-jar "$tempdir/cjar" \
+            --output "$tempdir/$pkgname" \
+            "${checkurl}${ccrid}"
+        echo -n "$pkgname: "
+        if grep -q "type='submit' class='button' name='do_UnVote'" $tempdir/$pkgname; then
+            echo "already voted"
+        elif grep -q "type='submit' class='button' name='do_Vote'" $tempdir/$pkgname; then
+            echo "not voted"
+        else
+            echo "voted status not found"
+        fi
+    done
+
+    die 0
+}
+
+submit() {
+    [[ $category == "" ]] && catvalue=1 || catvalue=${categories[$category]}
+
+    if [[ "${catvalue}" == "" ]]; then
+        echo "'$category' is not a valid category."
+        die 1
+    fi
+
+    # we don't even want to submit something different than source files
+    if [[ -z $pkgargs ]]; then
+       echo "You must specify a source package to upload."
+       die 1
+    elif [[ ! -f $pkgargs || $pkgargs != *.src.tar.gz ]]; then
+       echo "`basename ${pkgargs}` is not a source package!"
+       die 1
+    fi
+
+    # get the pkgname from the archive
+    pkgname=$(tar -xzOf $pkgargs --no-anchored 'PKGBUILD' | sed -n "s/^pkgname=['\"]\?\([^'\"]*\)['\"]\?/\1/p")
+
+    if ! existsinccr $pkgname && [[ $catvalue == 1 ]]; then
+        err "Since $pkgname is not in CCR yet, you must provide a category."
+        die 2
+    fi
+
+    login
+
+    # TODO allow multiple files to be uploaded.
+    #+advantages: you can update lots of packages at once
+    #+drawback, only one category can be selected for all of them
+    local error
+    error=$(curl -sS --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" \
+        --form "pkgsubmit=1" \
+        --form "category=${catvalue}" \
+        --form "pfile=@${pkgargs}" \
+        "${submiturl}" | 
+        sed -n "s|.*<span class='error'>\(.*\)</span>.*|\1|p; s|^\(You must create an .* packages\.\).*|Sorry, you are not logged in.|p" | 
+        head -1)
+    [[ $error ]] || error="Successfully uploaded."
+    echo "`basename ${pkgargs} ".src.tar.gz"`: $error"
+
+    die 0
+}
+
+listcat() {
+    for c in "${!categories[@]}"; do
+        echo "$c"
+    done | sort
+    exit 0
+}
+
+### MAIN PROGRAM ###
+pkgargs=()
+while [ "$#" -ne "0" ]; do
+	case $1 in
+    --help|-h)     usage ;;
+    --version|-V)  version ;;
+    --check|-c) shift
+        pkgargs=$@
+        check
+        ;;
+    --vote|-v) shift
+        pkgargs=$@
+        vote
+        ;;
+    --unvote|-u) shift
+        pkgargs=$@
+        unvote
+        ;;
+    --submit|-s) shift
+        while [[ "$#" != 0 ]]; do
+            case $1 in
+            --category|-C) shift 
+                category=$1; shift
+                [[ $category == "" ]] && listcat
+                ;;
+            *)  pkgargs+=$1; shift
+                ;;
+            esac
+        done
+        submit
+        ;;
+    -sC) shift
+        category=$1; shift
+        [[ "$category" == "" ]] && listcat
+        pkgargs=$@
+        submit
+        ;;
+    --maintainer|-m) shift 
+        maintainer=$1 
+        maintainer
+        ;;
+    --forget|-f) rememberme=0 ;;
+    --*|-*) echo "ccr-tools: Option \`$1' is not valid."; exit 5 ;;
+	esac
+	shift
+done
+
+usage
+
+# vim: sts=4 ts=4 sw=4 et
