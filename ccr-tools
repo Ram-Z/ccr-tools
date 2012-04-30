@@ -122,11 +122,11 @@ getcred() {
     # Check config file
     if [ -r ~/.ccr-toolsrc ] && [ ! -r "$configrc" ]; then
         echo "Moving ~/.ccr-toolsrc to $configrc"
-        mv ~/.ccr-toolsrc $configrc
+        install -Dm644 ~/.ccr-toolsrc "$configrc"
     fi
     if [ -r ~/.config/ccr-toolsrc ] && [ ! -r "$configrc" ]; then
         echo "Moving ~/.config/ccr-toolsrc to $configrc"
-        mv ~/.config/ccr-toolsrc $configrc
+        install -Dm644 ~/.config/ccr-toolsrc "$configrc"
     fi
 
     if [ ! -r "$configrc" ]; then
