@@ -77,7 +77,7 @@ runasroot() {
   else
     echo -n "root "
     # Hack: need to echo to make sure all of the args get in the single set of quotes
-    su root -c "$(echo $@)"
+    su root -c "$(echo $@)" -s "${SHELL-/bin/bash}"
   fi
 }
 
