@@ -6,7 +6,7 @@
 # Licensed under GPL version 3
 
 # prevent running the script as root
-if [[ $EUID == 0 ]]; then
+if [[ $EUID == 0 ]] && ! [[ $1 == "-Ss" || $1 == "-Si" || $1 == "-Ssq" || $1 == "-G" ]]; then
   echo "This script must not be run as root!" 
   echo "ccr will ask for your password if needed."
   exit 1
