@@ -1,7 +1,8 @@
 #!/bin/bash
 ver=0.2
 tempdir="/tmp/ccr-tools-$UID"
-configrc=$HOME/.config/ccr-tools/config
+configdir="$HOME/.config/ccr-tools"
+configrc="$configdir/config"
 ccrbaseurl="http://chakra-linux.org/ccr/"
 rpcurl="${ccrbaseurl}rpc.php?type"
 ccrurl="${ccrbaseurl}packages.php"
@@ -9,6 +10,7 @@ idurl="${ccrbaseurl}rpc.php?type=info&arg="
 voteurl="${ccrbaseurl}packages.php"
 checkurl="${ccrbaseurl}packages.php?ID="
 submiturl="${ccrbaseurl}pkgsubmit.php"
+mkdir -p "$configdir"
 mkdir -p "$tempdir"
 
 # Defining some functions needed by main program
@@ -138,7 +140,7 @@ EOF
     fi
       
     [[ -r "$configrc" ]] && source $configrc
-    rememberme=${rememberme-1}
+    rememberme=${rememberme:-1} # default to 1 if not set
 }
 
 expired() {
