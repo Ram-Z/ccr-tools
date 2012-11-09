@@ -64,6 +64,7 @@ usage() {
   echo '    --ccronly   - only do actions for ccr'
   echo '    --devel     - update devel packages during -Su'
   echo '    --skipinteg - when using makepkg, do not check md5s'
+  echo '    --asdeps    - mark installed package as dependency '
   echo '    -h          - outputs this message'
   exit
 }
@@ -468,6 +469,7 @@ while [[ $1 ]]; do
     '--ccronly') ccronly='1' ;;
     '--devel') devel='1' ;;
     '--skipinteg') MAKEPKGOPTS="--skipinteg" ;;
+    '--asdeps') PACOPTS+=("--asdeps");;
     '--') shift ; packageargs+=("$@") ; break ;;
     -*) echo "ccr: Option \`$1' is not valid." ; exit 5 ;;
     *) packageargs+=("$1") ;;
