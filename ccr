@@ -21,8 +21,8 @@ makepkgconf='/etc/makepkg.conf'
 usermakepkgconf="$HOME/.makepkg.conf"
 pacmanconf='/etc/pacman.conf'
 
-RPCURL="http://chakra-linux.org/ccr/rpc.php?type"
-PKGURL="http://chakra-linux.org/ccr/packages"
+RPCURL="http://chakra-project.org/ccr/rpc.php?type"
+PKGURL="http://chakra-project.org/ccr/packages"
 
 if [[ -t 1 && ! $COLOR = "NO" ]]; then
   COLOR1='\e[1;39m'
