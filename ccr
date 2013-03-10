@@ -6,7 +6,7 @@
 # Licensed under GPL version 3
 
 # prevent running the script as root
-if [[ $EUID == 0 ]]; then
+if [[ $EUID == 0 ]] && ! [[ $1 == "-Ss" || $1 == "-Si" || $1 == "-Ssq" || $1 == "-G" ]]; then
   echo "This script must not be run as root!" 
   echo "ccr will ask for your password if needed."
   exit 1
@@ -21,8 +21,8 @@ makepkgconf='/etc/makepkg.conf'
 usermakepkgconf="$HOME/.makepkg.conf"
 pacmanconf='/etc/pacman.conf'
 
-RPCURL="http://chakra-linux.org/ccr/rpc.php?type"
-PKGURL="http://chakra-linux.org/ccr/packages"
+RPCURL="http://chakra-project.org/ccr/rpc.php?type"
+PKGURL="http://chakra-project.org/ccr/packages"
 
 if [[ -t 1 && ! $COLOR = "NO" ]]; then
   COLOR1='\e[1;39m'
@@ -65,6 +65,7 @@ usage() {
   echo '    --devel     - update devel packages during -Su'
   echo '    --skipinteg - when using makepkg, do not check md5s'
   echo '    --asdeps    - mark installed package as dependency '
+  echo '    --holdver   - when using makepkg, do not update VCS revision'
   echo '    -h          - outputs this message'
   exit
 }
@@ -78,7 +79,7 @@ runasroot() {
   else
     echo -n "root "
     # Hack: need to echo to make sure all of the args get in the single set of quotes
-    su root -c "$(echo $@)"
+    su root -c "$(echo $@)" -s "${SHELL-/bin/bash}"
   fi
 }
 
@@ -468,8 +469,9 @@ while [[ $1 ]]; do
     '--noedit') noedit='1' ;;
     '--ccronly') ccronly='1' ;;
     '--devel') devel='1' ;;
-    '--skipinteg') MAKEPKGOPTS="--skipinteg" ;;
     '--asdeps') PACOPTS+=("--asdeps");;
+    '--skipinteg') MAKEPKGOPTS="${MAKEPKGOPTS} --skipinteg" ;;
+    '--holdver') MAKEPKGOPTS="${MAKEPKGOPTS} --holdver" ;;
     '--') shift ; packageargs+=("$@") ; break ;;
     -*) echo "ccr: Option \`$1' is not valid." ; exit 5 ;;
     *) packageargs+=("$1") ;;
