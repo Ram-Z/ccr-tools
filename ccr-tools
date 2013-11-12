@@ -199,6 +199,7 @@ vote() {
 unvote() {
     login
 
+    [[ -z ${pkgargs[@]} ]] && echo "You must specify a package." && die 1
     for pkgname in ${pkgargs[@]}; do
         ccrid=$(getccrid $pkgname)
         [ -z "$ccrid" ] && echo "$pkgname was not yound in CCR" && continue
