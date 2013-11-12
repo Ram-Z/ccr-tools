@@ -216,6 +216,25 @@ unvote() {
     die 0
 }
 
+comment() {
+    login
+
+    [[ -z ${pkgargs[@]} ]] && echo "You must specify a package." && die 1
+    for pkgname in ${pkgargs[@]}; do
+        ccrid=$(getccrid $pkgname)
+        [ -z "$ccrid" ] && echo "$pkgname was not yound in CCR" && continue
+
+        if curl -Ss --cookie "$tempdir/cjar" --cookie-jar "$tempdir/cjar" \
+            --data "ID=${ccrid}" --data "comment=${comment}" \
+            --output /dev/null ${checkurl}${ccrid}; then
+        else
+            echo "ERROR: Can't access $ccrurl"
+        fi
+    done
+
+    die 0
+}
+
 check() {
     login
 
@@ -307,6 +326,11 @@ while [ "$#" -ne "0" ]; do
     --unvote|-u) shift
         pkgargs=$@
         unvote
+        ;;
+    --comment) shift
+        comment=$1; shift
+        pkgargs=$@
+        comment
         ;;
     --submit|-s) shift
         while [[ "$#" != 0 ]]; do
